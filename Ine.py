@@ -1,5 +1,5 @@
 """
-Version: 1.1.0 Stable Nightly (beta release)
+Version: 1.2.0 Stable (beta release)
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
