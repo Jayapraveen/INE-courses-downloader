@@ -1,7 +1,7 @@
 """
 Version: 1.1.0 Stable Nightly (beta release)
 Author: Jayapraveen AR
-Credits: Donald Martinez
+Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
 Date : 24/05/2020
@@ -70,8 +70,8 @@ def auth_check():
     elif(auth_valid.status_code == 401):
         print("Access token expired!\nTrying to refresh..")
         access_token_refetch()
-        print("Waiting 15 seconds before resuming operations!")
-        sleep(15)
+        print("Waiting 5 seconds before resuming operations!\n")
+        sleep(5)
         auth_check()
 
 def access_token_refetch():
@@ -84,6 +84,7 @@ def access_token_refetch():
     if(out.status_code == 200):
         out = json.loads(out.text)
         access_token = out["data"]["tokens"]["data"]["Bearer"]
+        access_token = "Bearer "+ access_token
         refresh_token = out["data"]["tokens"]["data"]["Refresh"]
         with open(token_path,'w') as fp:
             tokens = {"access_token": access_token,"refresh_token": refresh_token}
@@ -211,11 +212,11 @@ def downloader(course,quality):
                                 )
                                 os.popen(command).read()
                         os.chdir('../')
+                pbar.update()
                 os.chdir('../')
             else:
                 print("The content type is not group")
         pbar.set_description("Downloading: %s" % course_name)
-        pbar.update()
         os.chdir('../')
         print("Selected course has been downloaded\n")
     else:
@@ -258,7 +259,7 @@ if __name__ == '__main__':
             exit()
         print("\nInitializing for Site dump\n")
         total_course = len(all_courses)
-        course_batch = 6
+        course_batch = 20
         if (os.path.isfile(course_completed_path)):
             with open(course_completed_path,'r') as cc:
                 completed_course = int(cc.readline()) + 1
@@ -268,8 +269,8 @@ if __name__ == '__main__':
             print("Course NO:",i)
             if(i % course_batch == 0 and i != 0):
                 print('Course batch complete \nWaiting 1 minute before resuming')
-                #access_token_refetch()
-                #sleep(60)
+                access_token_refetch()
+                sleep(60)
             course = all_courses[i]
             if(course["access"]["related_passes"][0]["name"] in access_pass):
                 downloader(course,quality)
