@@ -271,10 +271,10 @@ if __name__ == '__main__':
             course = all_courses[i]
             if(course["access"]["related_passes"][0]["name"] in access_pass):
                 downloader(course,quality)
-                update_downloaded(i)
+                 update_downloaded(str(i))
             else:
                 print("Your pass does not allow access to this course\n skipping this course..\n")
-        os.remove("ine_completed_course.txt")
+        os.remove(course_completed_path)
         print("Site rip is done!\n")
 
 
