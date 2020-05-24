@@ -145,7 +145,7 @@ def get_meta(uuid,quality):
         out.append(subtitle)
         return out
     elif(out.status_code == 403):
-        print("No access to video metadata;\nAccess Pass check failed to identify")
+        print("No access to video metadata;\nAccess Pass check failed to identify or error after token")
         exit()
 
 
@@ -177,46 +177,49 @@ def download_video(url,filename):
 def downloader(course,quality):
     course_name = course["name"]
     course_file = course["files"]
-    if(len(course['content'][0]['content']) == 1):
+    publish_state = course["status"]
+    if(publish_state == "published"):
         course_meta = course['content']
-        cont_loc = 1
-    else:
-        course_meta = course['content'][0]['content']
-        cont_loc = 2
-    os.chdir(save_path)
-    if not os.path.exists(course_name):
-        os.makedirs(course_name)
-    os.chdir(course_name)
-    pbar = tqdm(course_file)
-    for i in pbar:
-        command = "curl '{}' --output '{}' -s".format(i["url"],i["name"])
-        os.popen(command).read()
-        pbar.set_description("Downloading course file: %s" % i["name"])
-        pbar.update()
-    pbar = tqdm(course_meta)
-    for i in pbar:
-        subtopic_name = i["name"]
-        if(cont_loc == 1):
-            course_meta = i["content"][0]["content"]
-        else:
-            course_meta = i["content"]
-        if not os.path.exists(subtopic_name):
-            os.makedirs(subtopic_name)
-        os.chdir(subtopic_name)
-        for j in course_meta:
-            if(j["content_type"] == "video"):
-                out = get_meta(j["uuid"],quality)
-                download_video(out[1],out[0])
-                command = "curl '{}' --output {} -s".format(
-                out[2],
-                out[0] + '.vtt'
-                )
-                os.popen(command).read()
-        os.chdir('../')
+        os.chdir(save_path)
+        if not os.path.exists(course_name):
+            os.makedirs(course_name)
+        os.chdir(course_name)
+        pbar = tqdm(course_file)
+        for i in pbar:
+            command = "curl '{}' --output '{}' -s".format(i["url"],i["name"])
+            os.popen(command).read()
+            pbar.set_description("Downloading course file: %s" % i["name"])
+            pbar.update()
+        pbar = tqdm(course_meta)
+        for i in pbar:
+            if i["content_type"] == "group":
+                if not os.path.exists(i["name"]):
+                    os.makedirs(i["name"])
+                os.chdir(i["name"])
+                for j in i["content"]:
+                    if(j["content_type"] == "topic"):
+                        if not os.path.exists(j["name"]):
+                            os.makedirs(j["name"])
+                        os.chdir(j["name"])
+                        for k in j["content"]:
+                            if(k["content_type"] == "video"):
+                                out = get_meta(k["uuid"],quality)
+                                download_video(out[1],out[0])
+                                command = "curl '{}' --output {} -s".format(
+                                out[2],
+                                out[0] + '.vtt'
+                                )
+                                os.popen(command).read()
+                        os.chdir('../')
+                os.chdir('../')
+            else:
+                print("The content type is not group")
         pbar.set_description("Downloading: %s" % course_name)
         pbar.update()
-    os.chdir('../')
-    print("Selected course has been downloaded\n")
+        os.chdir('../')
+        print("Selected course has been downloaded\n")
+    else:
+        print("This course is marked as {}. Visit later when available on website to download ".format(publish_state))
 
 
 if __name__ == '__main__':
@@ -232,7 +235,6 @@ if __name__ == '__main__':
         print("Please refer to readme.md in github and set the refresh_token")
         exit()
     if(len(refresh_token) != 1784):
-        print(len(refresh_token))
         print("Refresh token entered is faulty. Check and correct errors!")
         exit()
     print("Warning! Until the script completes execution do not access INE website or mobile app\n as it might invalidate the session!\n")
@@ -266,12 +268,12 @@ if __name__ == '__main__':
             print("Course NO:",i)
             if(i % course_batch == 0 and i != 0):
                 print('Course batch complete \nWaiting 1 minute before resuming')
-                sleep(60)
-                access_token_refetch()
+                #access_token_refetch()
+                #sleep(60)
             course = all_courses[i]
             if(course["access"]["related_passes"][0]["name"] in access_pass):
                 downloader(course,quality)
-                 update_downloaded(str(i))
+                update_downloaded(str(i))
             else:
                 print("Your pass does not allow access to this course\n skipping this course..\n")
         os.remove(course_completed_path)
