@@ -4,7 +4,7 @@ Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 24/05/2020
+Date : 25/05/2020
 To Do:
 3. Optimize for efficiency and memory footprint
 4. Make program multithreaded
@@ -54,6 +54,7 @@ video_url = "https://video.rmotr.com/api/v1/videos/{}/media"
 subscription_url = "https://subscriptions.ine.com/subscriptions/subscriptions?embed=passes"
 refresh_token_url = "https://uaa.ine.com/uaa/auth/refresh-token"
 auth_check_url = "https://uaa.ine.com/uaa/auth/state/status"
+preview_url = "https://cdn.jwplayer.com/v2/media/"
 
 def auth_check():
     host = "uaa.ine.com"
@@ -98,6 +99,23 @@ def update_downloaded(course_index):
     with open(course_completed_path,'w') as cci:
         cci.write(course_index)
 
+def course_preview_meta_getter(preview_id,quality):
+    video_preview_url = preview_url + preview_id
+    video = requests.get(video_preview_url)
+    video = json.loads(video.text)
+    out = []
+    title = video["title"] + '.mp4'
+    out.append(title)
+    video = video["playlist"][0]["sources"]
+    for i in video:
+        try:
+            if(i["height"] == quality):
+                video = i["file"]
+                out.append(video)
+        except:
+            continue
+    return out
+
 
 def pass_validator():
     host = "subscriptions.ine.com"
@@ -139,11 +157,9 @@ def get_meta(uuid,quality):
                     video = i["file"]
             except:
                 continue
-        subtitle = out["playlist"][0]["tracks"][0]["file"]
         out = []
         out.append(name)
         out.append(video)
-        out.append(subtitle)
         return out
     elif(out.status_code == 403):
         print("No access to video metadata;\nAccess Pass check failed to identify or error after token")
@@ -178,6 +194,7 @@ def download_video(url,filename):
 def downloader(course,quality):
     course_name = course["name"]
     course_file = course["files"]
+    preview_id = course["trailer_jwplayer_id"]
     publish_state = course["status"]
     if(publish_state == "published"):
         course_meta = course['content']
@@ -191,8 +208,12 @@ def downloader(course,quality):
             os.popen(command).read()
             pbar.set_description("Downloading course file: %s" % i["name"])
             pbar.update()
+        if(preview_id != ""):
+            course_preview = course_preview_meta_getter(preview_id,quality)
+            download_video(course_preview[1],course_preview[0])
         pbar = tqdm(course_meta)
         for i in pbar:
+            pbar.set_description("Downloading: %s" % course_name)
             if i["content_type"] == "group":
                 if not os.path.exists(i["name"]):
                     os.makedirs(i["name"])
@@ -206,17 +227,11 @@ def downloader(course,quality):
                             if(k["content_type"] == "video"):
                                 out = get_meta(k["uuid"],quality)
                                 download_video(out[1],out[0])
-                                command = "curl '{}' --output {} -s".format(
-                                out[2],
-                                out[0] + '.vtt'
-                                )
-                                os.popen(command).read()
                         os.chdir('../')
-                pbar.update()
                 os.chdir('../')
             else:
-                print("The content type is not group")
-        pbar.set_description("Downloading: %s" % course_name)
+                print("The content type is not a group")
+            pbar.update()
         os.chdir('../')
         print("Selected course has been downloaded\n")
     else:
@@ -229,7 +244,7 @@ if __name__ == '__main__':
     if(len(access_token) == 0):
         print("Please refer to readme.md in github and set the access_token")
         exit()
-    if(len(access_token) != 1009):
+    if(len(access_token) != 1016):
         print("Access token entered is faulty. Check for and correct errors!")
         exit()
     if(len(refresh_token) == 0):
