@@ -85,11 +85,11 @@ def access_token_refetch():
     if(out.status_code == 200):
         out = json.loads(out.text)
         access_token = out["data"]["tokens"]["data"]["Bearer"]
-        access_token = "Bearer "+ access_token
         refresh_token = out["data"]["tokens"]["data"]["Refresh"]
         with open(token_path,'w') as fp:
             tokens = {"access_token": access_token,"refresh_token": refresh_token}
             fp.write(json.dumps(tokens))
+		access_token = "Bearer "+ access_token
         print("Got new tokens")
     elif(out.status_code == 401):
         print("Failure, Get new tokens manually!\n")
