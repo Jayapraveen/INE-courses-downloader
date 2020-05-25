@@ -1,5 +1,5 @@
 """
-Version: 1.2.0 Stable (beta release)
+Version: 1.2.1 Stable (beta release)
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
@@ -19,6 +19,7 @@ Bug reporting: Please report them if any in issues tab
 import requests
 import json
 import os
+import shutil
 from time import sleep
 from tqdm import tqdm
 
@@ -186,10 +187,15 @@ def total_courses():
 
 def download_video(url,filename):
     video = requests.get(url, stream=True)
-    with open(filename, 'wb') as video_file:
-        for chunk in video.iter_content(chunk_size=1024):
-            if chunk:
-                video_file.write(chunk)
+    video_length = int(video.headers.get('content-length'))
+    if video.status_code is 200:
+        with open(filename, 'wb') as video_file:
+            shutil.copyfileobj(video.raw, video_file)
+        if os.path.getsize(filename) >= video_length:
+            pass
+        else:
+            print("error downloaded video is faulty.. Retrying to download")
+            download_video(url,filename)
 
 def downloader(course,quality):
     course_name = course["name"]
@@ -233,7 +239,7 @@ def downloader(course,quality):
                     print("The content type is not a group")
                 pbar.update(1)
         os.chdir('../')
-        print("Selected course has been downloaded\n")
+        print("Course downloaded successfully\n")
     else:
         print("This course is marked as {}. Visit later when available on website to download ".format(publish_state))
 
