@@ -19,7 +19,7 @@
 ## Credits
 Made possible by @dexter101010 and his yummy cookies.
 
-## Legal Discalimer
+## Legal Disclaimer
 1. This script is intended only for Personal and Educational use only
 2. The sole responsibility of the consequences raised by using the script is beared by the user alone. Neither the author of the script nor any one affiliated to him will be held responsible under any circumstances.
 3. Redistribution of the material downloaded using this script is against the likeness of the author.
