@@ -19,6 +19,7 @@ Bug reporting: Please report them if any in issues tab
 import requests
 import json
 import os
+import re
 import shutil
 from time import sleep
 from tqdm import tqdm
@@ -138,7 +139,7 @@ def pass_validator():
     return passes
 
 def sanitize(course_name):
-	course_name = re.sub('/',' ',course_name)
+    course_name = re.sub('/',' ',course_name)
     if(course_name.split(':')[0] == "Video"):
         course_name = course_name.split('/')[-1]
         return course_name
@@ -198,7 +199,7 @@ def download_video(url,filename):
             print("error downloaded video is faulty.. Retrying to download")
             download_video(url,filename)
 
-def downloader(course,quality):
+def downloader(course):
     course_name = course["name"]
     course_file = course["files"]
     preview_id = course["trailer_jwplayer_id"]
@@ -232,7 +233,7 @@ def downloader(course,quality):
                             os.chdir(j["name"])
                             for k in j["content"]:
                                 if(k["content_type"] == "video"):
-                                    out = get_meta(k["uuid"],quality)
+                                    out = get_meta(k["uuid"])
                                     download_video(out[1],out[0])
                             os.chdir('../')
                     os.chdir('../')
