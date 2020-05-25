@@ -22,7 +22,6 @@ import requests
 import json
 import os
 import re
-import shutil
 from time import sleep
 from tqdm import tqdm
 
@@ -194,7 +193,9 @@ def download_video(url,filename):
     video_length = int(video.headers.get('content-length'))
     if video.status_code is 200:
         with open(filename, 'wb') as video_file:
-            shutil.copyfileobj(video.raw, video_file)
+			for chunk in video.iter_content(chunk_size=1024):
+            if chunk:
+                video_file.write(chunk)
         if os.path.getsize(filename) >= video_length:
             pass
         else:
