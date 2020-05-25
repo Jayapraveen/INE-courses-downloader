@@ -138,6 +138,7 @@ def pass_validator():
     return passes
 
 def sanitize(course_name):
+	course_name = re.sub('/',' ',course_name)
     if(course_name.split(':')[0] == "Video"):
         course_name = course_name.split('/')[-1]
         return course_name
@@ -145,7 +146,7 @@ def sanitize(course_name):
         return course_name + '.mp4'
 
 #Video metadata getter
-def get_meta(uuid,quality):
+def get_meta(uuid):
     host = "video.rmotr.com"
     header = {"Host": host,"Origin": referer,"Referer": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Content-Type": content_type}
     out = requests.get(video_url.format(uuid),headers = header)
@@ -294,7 +295,7 @@ if __name__ == '__main__':
                 sleep(60)
             course = all_courses[i]
             if(course["access"]["related_passes"][0]["name"] in access_pass):
-                downloader(course,quality)
+                downloader(course)
                 update_downloaded(str(i))
             else:
                 print("Your pass does not allow access to this course\n skipping this course..\n")
@@ -315,7 +316,7 @@ if __name__ == '__main__':
                 exit()
             course = choice
             if(course["access"]["related_passes"][0]["name"] in access_pass):
-                downloader(course,quality)
+                downloader(course)
             else:
                 print("You do not have the subscription pass access to this course")
                 exit()
@@ -324,7 +325,7 @@ if __name__ == '__main__':
             choice = int(input("Please enter the number corresponding to the course you would like to download\n"))
             course = all_courses[choice]
             if(course["access"]["related_passes"][0]["name"] in access_pass):
-                downloader(course,quality)
+                downloader(course)
             else:
                 print("You do not have the subscription pass to access to this course")
                 exit()
