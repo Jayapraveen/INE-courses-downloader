@@ -29,6 +29,7 @@ from tqdm import tqdm
 script_path = os.getcwd()
 token_path = script_path + '/ine_tokens.txt'
 course_completed_path = script_path + '/ine_completed_course.txt'
+course_list_path = script_path + '/ine_courses.txt'
 #Download location
 custom = False
 if(custom):
@@ -172,12 +173,12 @@ def get_meta(uuid):
 
 def coursemeta_fetcher():
     all_courses = requests.get(all_courses_url)
-    course_handler = open('ine_courses.txt','w')
+    course_handler = open(course_list_path,'w')
     course_handler.write(all_courses.text)
     course_handler.close()
 
 def total_courses():
-    course_handler = open('ine_courses.txt','r')
+    course_handler = open(course_list_path,'r')
     all_courses = json.loads(course_handler.readline())
     course_handler.close()
     length = len(all_courses)
@@ -272,7 +273,7 @@ if __name__ == '__main__':
     auth_check()
     access_pass = pass_validator()
     method = int(input("Choose Method Of Operation:\n1.Site Rip\n2.Select Individual Course\n"))
-    if (os.path.isfile('ine_courses.txt')):
+    if (os.path.isfile(course_list_path)):
         all_courses = total_courses()
     else:
         coursemeta_fetcher()
