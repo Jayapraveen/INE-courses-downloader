@@ -15,6 +15,8 @@ To Do:
 9. Reduce input faults if any
 10. Make more autonomous with cli invocation and args parsing
 Bug reporting: Please report them if any in issues tab
+Known bugs: 
+1.Shutil causes peer closed issue
 """
 import requests
 import json
@@ -219,14 +221,14 @@ def downloader(course):
         if(preview_id != ""):
             course_preview = course_preview_meta_getter(preview_id,quality)
             download_video(course_preview[1],course_preview[0])
-        with tqdm(total=len(course_meta)) as pbar:
-            for i in course_meta:
-                pbar.set_description("Downloading: %s" % course_name)
-                if i["content_type"] == "group":
-                    if not os.path.exists(i["name"]):
-                        os.makedirs(i["name"])
-                    os.chdir(i["name"])
-                    for j in i["content"]:
+        for i in course_meta:
+            pbar.set_description("Downloading: %s" % course_name)
+            if i["content_type"] == "group":
+                if not os.path.exists(i["name"]):
+                    os.makedirs(i["name"])
+                os.chdir(i["name"])
+                with tqdm(i["content"]) as pbar:
+                    for j in pbar:
                         if(j["content_type"] == "topic"):
                             if not os.path.exists(j["name"]):
                                 os.makedirs(j["name"])
@@ -236,10 +238,11 @@ def downloader(course):
                                     out = get_meta(k["uuid"])
                                     download_video(out[1],out[0])
                             os.chdir('../')
-                    os.chdir('../')
-                else:
-                    print("The content type is not a group")
-                pbar.update(1)
+                    pbar.update()
+                os.chdir('../')
+            else:
+                print("The content type is not a group")
+            pbar.update()
         os.chdir('../')
         print("Course downloaded successfully\n")
     else:
