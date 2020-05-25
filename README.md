@@ -14,7 +14,7 @@
 10. To specify the download location open and change the custom Boolean to true and fill the save_path with your download location and save the script
 11. Save and run the script
 
-[Obtain Token](https://raw.githubusercontent.com/Jayapraveen/INE-courses-downloader/screenshots/image.png)
+[Obtain Token](https://github.com/Jayapraveen/INE-courses-downloader/raw/master/screenshots/image.png)
 
 ## Credits
 Made possible by @dexter101010 and his yummy cookies.
