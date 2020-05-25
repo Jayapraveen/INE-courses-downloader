@@ -15,7 +15,7 @@ To Do:
 9. Reduce input faults if any
 10. Make more autonomous with cli invocation and args parsing
 Bug reporting: Please report them if any in issues tab
-Known bugs: 
+Known bugs:
 1.Shutil causes peer closed issue
 """
 import requests
@@ -193,9 +193,9 @@ def download_video(url,filename):
     video_length = int(video.headers.get('content-length'))
     if video.status_code is 200:
         with open(filename, 'wb') as video_file:
-		for chunk in video.iter_content(chunk_size=1024):
-			if chunk:
-				video_file.write(chunk)
+            for chunk in video.iter_content(chunk_size=1024):
+                if chunk:
+                    video_file.write(chunk)
         if os.path.getsize(filename) >= video_length:
             pass
         else:
