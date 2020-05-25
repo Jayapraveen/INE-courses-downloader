@@ -19,18 +19,20 @@ Bug reporting: Please report them if any in issues tab
 import requests
 import json
 import os
+import multiprocessing
 import shutil
+import re
 from time import sleep
 from tqdm import tqdm
 
 #script location
-script_path = os.getcwd()
+script_path = "/content/drive/My Drive/Colab Notebooks/Ine-dl"
 token_path = script_path + '/ine_tokens.txt'
 course_completed_path = script_path + '/ine_completed_course.txt'
 #Download location
-custom = False
+custom = True
 if(custom):
-    save_path = ""
+    save_path = "/content/drive/My Drive/Ine Courses/"
 else:
     save_path = "./"
 #token
@@ -138,6 +140,7 @@ def pass_validator():
     return passes
 
 def sanitize(course_name):
+    course_name = re.sub('/',' ',course_name)
     if(course_name.split(':')[0] == "Video"):
         course_name = course_name.split('/')[-1]
         return course_name
@@ -148,6 +151,7 @@ def sanitize(course_name):
 def get_meta(uuid,quality):
     host = "video.rmotr.com"
     header = {"Host": host,"Origin": referer,"Referer": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Content-Type": content_type}
+    sleep(5)
     out = requests.get(video_url.format(uuid),headers = header)
     if out.status_code == 200:
         out = json.loads(out.text)
@@ -186,6 +190,7 @@ def total_courses():
     return all_courses
 
 def download_video(url,filename):
+    sleep(5)
     video = requests.get(url, stream=True)
     video_length = int(video.headers.get('content-length'))
     if video.status_code is 200:
@@ -197,7 +202,7 @@ def download_video(url,filename):
             print("error downloaded video is faulty.. Retrying to download")
             download_video(url,filename)
 
-def downloader(course,quality):
+def downloader(course):
     course_name = course["name"]
     course_file = course["files"]
     preview_id = course["trailer_jwplayer_id"]
@@ -213,35 +218,40 @@ def downloader(course,quality):
             command = "curl '{}' --output '{}' -s".format(i["url"],i["name"])
             os.popen(command).read()
             pbar.set_description("Downloading course file: %s" % i["name"])
-            pbar.update()
+            pbar.update(1)
         if(preview_id != ""):
             course_preview = course_preview_meta_getter(preview_id,quality)
             download_video(course_preview[1],course_preview[0])
-        with tqdm(total=len(course_meta)) as pbar:
-            for i in course_meta:
-                pbar.set_description("Downloading: %s" % course_name)
-                if i["content_type"] == "group":
-                    if not os.path.exists(i["name"]):
-                        os.makedirs(i["name"])
-                    os.chdir(i["name"])
-                    for j in i["content"]:
-                        if(j["content_type"] == "topic"):
-                            if not os.path.exists(j["name"]):
-                                os.makedirs(j["name"])
-                            os.chdir(j["name"])
-                            for k in j["content"]:
-                                if(k["content_type"] == "video"):
-                                    out = get_meta(k["uuid"],quality)
-                                    download_video(out[1],out[0])
-                            os.chdir('../')
-                    os.chdir('../')
-                else:
-                    print("The content type is not a group")
-                pbar.update(1)
+        for i in course_meta:
+            if i["content_type"] == "group":
+                if not os.path.exists(i["name"]):
+                    os.makedirs(i["name"])
+                os.chdir(i["name"])
+                for j in i["content"]:
+                    if(j["content_type"] == "topic"):
+                        if not os.path.exists(j["name"]):
+                            os.makedirs(j["name"])
+                        os.chdir(j["name"])
+                        for k in j["content"]:
+                            if(k["content_type"] == "video"):
+                                out = get_meta(k["uuid"],quality)
+                                download_video(out[1],out[0])
+                        os.chdir('../')
+                os.chdir('../')
+            else:
+                print("The content type is not a group")
         os.chdir('../')
         print("Course downloaded successfully\n")
     else:
         print("This course is marked as {}. Visit later when available on website to download ".format(publish_state))
+
+def pooled_download(i):
+    course = all_courses[i]
+    if(course["access"]["related_passes"][0]["name"] in access_pass):
+        downloader(course)
+        cpbar.update(1)
+    else:
+        print("Your pass does not allow access to this course\n skipping this course..\n")
 
 
 if __name__ == '__main__':
@@ -280,12 +290,29 @@ if __name__ == '__main__':
             exit()
         print("\nInitializing for Site dump\n")
         total_course = len(all_courses)
-        course_batch = 20
         if (os.path.isfile(course_completed_path)):
             with open(course_completed_path,'r') as cc:
                 completed_course = int(cc.readline()) + 1
         else:
             completed_course = 0
+        course_batch = 3
+        for i in range(completed_course,total_course,course_batch):
+            if(i + course_batch > total_course):
+                this_session = (i + course_batch) - total_course
+            else:
+            	this_session = i + course_batch
+            cpbar = tqdm(total = course_batch)
+            print("\nCourses to be downloaded this batch:",i," to ",this_session)
+            pool = multiprocessing.Pool(multiprocessing.cpu_count())  # Num of CPUs
+            with pool as p:
+                p.map(pooled_download,range(i, this_session))
+                p.close()
+                p.join()
+            update_downloaded(str(i))
+            #access_token_refetch()
+            sleep(1)
+        os.remove(course_completed_path)
+        """
         for i in range(completed_course,total_course):
             print("Course NO:",i)
             if(i % course_batch == 0 and i != 0):
@@ -294,11 +321,12 @@ if __name__ == '__main__':
                 sleep(60)
             course = all_courses[i]
             if(course["access"]["related_passes"][0]["name"] in access_pass):
-                downloader(course,quality)
+                downloader(course)
                 update_downloaded(str(i))
             else:
                 print("Your pass does not allow access to this course\n skipping this course..\n")
         os.remove(course_completed_path)
+        """
         print("Site rip is done!\n")
 
 
@@ -315,7 +343,7 @@ if __name__ == '__main__':
                 exit()
             course = choice
             if(course["access"]["related_passes"][0]["name"] in access_pass):
-                downloader(course,quality)
+                downloader(course)
             else:
                 print("You do not have the subscription pass access to this course")
                 exit()
@@ -324,7 +352,7 @@ if __name__ == '__main__':
             choice = int(input("Please enter the number corresponding to the course you would like to download\n"))
             course = all_courses[choice]
             if(course["access"]["related_passes"][0]["name"] in access_pass):
-                downloader(course,quality)
+                downloader(course)
             else:
                 print("You do not have the subscription pass to access to this course")
                 exit()
