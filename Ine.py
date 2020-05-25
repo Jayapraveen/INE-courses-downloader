@@ -251,7 +251,10 @@ def downloader(course):
 
 
 if __name__ == '__main__':
-    os.system('clear')
+    if os.name == 'nt':
+        os.system('cls')
+    else:
+        os.system('clear')
     print("INE Courses Downloader\n")
     if(len(access_token) == 0):
         print("Please refer to readme.md in github and set the access_token")
