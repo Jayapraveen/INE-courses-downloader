@@ -89,7 +89,7 @@ def access_token_refetch():
         with open(token_path,'w') as fp:
             tokens = {"access_token": access_token,"refresh_token": refresh_token}
             fp.write(json.dumps(tokens))
-		access_token = "Bearer "+ access_token
+        access_token = "Bearer "+ access_token
         print("Got new tokens")
     elif(out.status_code == 401):
         print("Failure, Get new tokens manually!\n")
@@ -211,27 +211,27 @@ def downloader(course,quality):
         if(preview_id != ""):
             course_preview = course_preview_meta_getter(preview_id,quality)
             download_video(course_preview[1],course_preview[0])
-        pbar = tqdm(course_meta)
-        for i in pbar:
-            pbar.set_description("Downloading: %s" % course_name)
-            if i["content_type"] == "group":
-                if not os.path.exists(i["name"]):
-                    os.makedirs(i["name"])
-                os.chdir(i["name"])
-                for j in i["content"]:
-                    if(j["content_type"] == "topic"):
-                        if not os.path.exists(j["name"]):
-                            os.makedirs(j["name"])
-                        os.chdir(j["name"])
-                        for k in j["content"]:
-                            if(k["content_type"] == "video"):
-                                out = get_meta(k["uuid"],quality)
-                                download_video(out[1],out[0])
-                        os.chdir('../')
-                os.chdir('../')
-            else:
-                print("The content type is not a group")
-            pbar.update()
+        with tqdm(total=len(course_meta)) as pbar:
+            for i in course_meta:
+                pbar.set_description("Downloading: %s" % course_name)
+                if i["content_type"] == "group":
+                    if not os.path.exists(i["name"]):
+                        os.makedirs(i["name"])
+                    os.chdir(i["name"])
+                    for j in i["content"]:
+                        if(j["content_type"] == "topic"):
+                            if not os.path.exists(j["name"]):
+                                os.makedirs(j["name"])
+                            os.chdir(j["name"])
+                            for k in j["content"]:
+                                if(k["content_type"] == "video"):
+                                    out = get_meta(k["uuid"],quality)
+                                    download_video(out[1],out[0])
+                            os.chdir('../')
+                    os.chdir('../')
+                else:
+                    print("The content type is not a group")
+                pbar.update(1)
         os.chdir('../')
         print("Selected course has been downloaded\n")
     else:
@@ -244,7 +244,7 @@ if __name__ == '__main__':
     if(len(access_token) == 0):
         print("Please refer to readme.md in github and set the access_token")
         exit()
-    if(len(access_token) != 1016):
+    if(len(access_token) != 1009):
         print("Access token entered is faulty. Check for and correct errors!")
         exit()
     if(len(refresh_token) == 0):
