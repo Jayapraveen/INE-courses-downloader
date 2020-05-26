@@ -215,46 +215,47 @@ def downloader(course):
         if not os.path.exists(course_name):
             os.makedirs(course_name)
         os.chdir(course_name)
-        pbar = tqdm(course_file)
-        for i in pbar:
-            command = "curl '{}' --output '{}' -s".format(i["url"],i["name"])
-            os.popen(command).read()
-            pbar.set_description("Downloading course file: %s" % i["name"])
-            pbar.update()
+        if(len(course_file) > 0):
+            pbar = tqdm(course_file)
+            for i in pbar:
+                command = "curl '{}' --output '{}' -s".format(i["url"],i["name"])
+                os.popen(command).read()
+                pbar.set_description("Downloading course file: %s" % i["name"])
+                pbar.update()
         if(preview_id != ""):
             course_preview = course_preview_meta_getter(preview_id,quality)
             download_video(course_preview[1],course_preview[0])
         folder_index = 1
-        for i in course_meta:
-            pbar.set_description("Downloading: %s" % course_name)
-            if i["content_type"] == "group":
-                folder_name = str(folder_index) + '.' +i["name"]
-                if not os.path.exists(folder_name):
-                    os.makedirs(folder_name)
-                os.chdir(folder_name)
-                folder_index = folder_index + 1
-                subfolder_index = 1
-                with tqdm(i["content"]) as pbar:
-                    for j in pbar:
-                        if(j["content_type"] == "topic"):
-                            subfolder_name = str(subfolder_index) + '.' + j["name"]
-                            if not os.path.exists(subfolder_name):
-                                os.makedirs(subfolder_name)
-                            os.chdir(subfolder_name)
-                            subfolder_index = subfolder_index + 1
-                            video_index = 1
-                            for k in j["content"]:
-                                if(k["content_type"] == "video"):
-                                    out = get_meta(k["uuid"])
-                                    out[0] = str(video_index) + '.' + out[0]
-                                    video_index = video_index + 1
-                                    download_video(out[1],out[0])
-                            os.chdir('../')
-                    pbar.update()
-                os.chdir('../')
-            else:
-                print("The content type is not a group")
-            pbar.update()
+        with tqdm(total=len(course_meta)) as pbar:
+            for i in course_meta:
+                pbar.set_description("Downloading: %s" % course_name)
+                if i["content_type"] == "group":
+                    folder_name = str(folder_index) + '.' +i["name"]
+                    if not os.path.exists(folder_name):
+                        os.makedirs(folder_name)
+                    os.chdir(folder_name)
+                    folder_index = folder_index + 1
+                    subfolder_index = 1
+                    with tqdm(i["content"]) as pbar:
+                        for j in pbar:
+                            if(j["content_type"] == "topic"):
+                                subfolder_name = str(subfolder_index) + '.' + j["name"]
+                                if not os.path.exists(subfolder_name):
+                                    os.makedirs(subfolder_name)
+                                os.chdir(subfolder_name)
+                                subfolder_index = subfolder_index + 1
+                                video_index = 1
+                                for k in j["content"]:
+                                    if(k["content_type"] == "video"):
+                                        out = get_meta(k["uuid"])
+                                        out[0] = str(video_index) + '.' + out[0]
+                                        video_index = video_index + 1
+                                        download_video(out[1],out[0])
+                                os.chdir('../')
+                    os.chdir('../')
+                else:
+                    print("The content type is not a group")
+                pbar.update()
         os.chdir('../')
         print("Course downloaded successfully\n")
     else:
