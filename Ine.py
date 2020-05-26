@@ -1,5 +1,5 @@
 """
-Version: 1.2.4 Stable (beta release)
+Version: 1.2.6 Stable (beta release)
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
@@ -9,21 +9,19 @@ To Do:
 3. Optimize for efficiency and memory footprint
 4. Make program multithreaded
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
-6. Try to implement login using credentials
-7. Try to bypass google v2 verification
 8. Move all configurations to seperate configuration file
-9. Reduce input faults if any
 10. Make more autonomous with cli invocation and args parsing
 Bug reporting: Please report them if any in issues tab
 """
+
 import requests
 import json
 import os
 import re
 import shutil
+import getpass
 from time import sleep
 from tqdm import tqdm
-
 #script location
 script_path = os.getcwd()
 token_path = script_path + '/ine_tokens.txt'
@@ -35,12 +33,6 @@ if(custom):
     save_path = ""
 else:
     save_path = "./"
-#token
-with open(token_path,'r') as fp:
-    fp = json.loads(fp.read())
-access_token = fp["access_token"]
-refresh_token = fp["refresh_token"]
-access_token = "Bearer "+ access_token
 #headers
 accept = "application/json, text/plain, */*"
 x_requested_with = "com.my.ine"
@@ -50,14 +42,43 @@ sec_fetch_dest = "empty"
 content_type = "application/json;charset=UTF-8"
 user_agent = "Mozilla/5.0 (Linux; Android 6.0;PIXEL XL Build/INE) Mobile Safari/537.29"
 referer = "http://localhost"
+origin = "file://"
 accept_encodings = "gzip, deflate, br"
 #endpoints
+login_url = "https://uaa.ine.com/uaa/authenticate"
 all_courses_url = "https://content-api.rmotr.com/api/v1/courses?active=true&page_size=none&ordering=-created"
 video_url = "https://video.rmotr.com/api/v1/videos/{}/media"
 subscription_url = "https://subscriptions.ine.com/subscriptions/subscriptions?embed=passes"
 refresh_token_url = "https://uaa.ine.com/uaa/auth/refresh-token"
 auth_check_url = "https://uaa.ine.com/uaa/auth/state/status"
 preview_url = "https://cdn.jwplayer.com/v2/media/"
+
+def login():
+    global access_token
+    global refresh_token
+    host = "uaa.ine.com"
+    header = {"Host": host,"Origin": origin,"Referer": referer,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Content-Type": content_type}
+    user_name = input("Enter your Username: ")
+    password = getpass.getpass(prompt="Enter your Password: \n")
+    login_data = {"username": user_name,"password": password}
+    login_data = json.dumps(login_data)
+    login_data = requests.post(login_url,headers = header,data = login_data)
+    if(login_data.status_code == 200):
+        login_data = json.loads(login_data.text)
+        access_token = login_data["data"]["tokens"]["data"]["Bearer"]
+        refresh_token = login_data["data"]["tokens"]["data"]["Refresh"]
+        with open(token_path,'w') as fp:
+            tokens = {"access_token": access_token,"refresh_token": refresh_token}
+            fp.write(json.dumps(tokens))
+            access_token = "Bearer "+ access_token
+            auth_check()
+    elif(login_data.status_code == 403):
+        print("Username or password is incorrect\n ")
+        option = input("Choose from the following options:\n1.Relogin\n2.Exit")
+        if(option == 1):
+            login()
+        else:
+            exit()
 
 def auth_check():
     host = "uaa.ine.com"
@@ -74,8 +95,6 @@ def auth_check():
     elif(auth_valid.status_code == 401):
         print("Access token expired!\nTrying to refresh..")
         access_token_refetch()
-        print("Waiting 5 seconds before resuming operations!\n")
-        sleep(5)
         auth_check()
 
 def access_token_refetch():
@@ -95,8 +114,13 @@ def access_token_refetch():
         access_token = "Bearer "+ access_token
         print("Got new tokens")
     elif(out.status_code == 401):
-        print("Failure, Get new tokens manually!\n")
-        exit()
+        relogin = int(input("Failure, Please choose from the following options\n1.Login\n2.Recheck for updated tokens(after updating the tokens in the file)\n3.Exit\n"))
+        if(relogin == 1):
+            login()
+        elif(relogin == 2):
+            auth_check()
+        elif(relogin == 3):
+            exit()
 
 def update_downloaded(course_index):
     with open(course_completed_path,'w') as cci:
@@ -140,11 +164,12 @@ def pass_validator():
     return passes
 
 def sanitize(course_name):
-    course_name = re.sub('/',' ',course_name)
     if(course_name.split(':')[0] == "Video"):
         course_name = course_name.split('/')[-1]
+        course_name = re.sub('/',' ',course_name)
         return course_name
     else:
+        course_name = re.sub('/',' ',course_name)
         return course_name + '.mp4'
 
 #Video metadata getter
@@ -166,7 +191,10 @@ def get_meta(uuid):
         out.append(video)
         return out
     elif(out.status_code == 403):
-        print("No access to video metadata;\nAccess Pass check failed to identify or error after token")
+        print("No access to video metadata;\nToken expired. Trying to refresh ..")
+        access_token_refetch()
+        print("Resuming operations..")
+        get_meta(uuid)
         exit()
 
 
@@ -191,6 +219,7 @@ def total_courses():
 def download_video(url,filename):
     video = requests.get(url, stream=True)
     video_length = int(video.headers.get('content-length'))
+    filename = filename
     if video.status_code is 200:
         try:
             with open(filename, 'wb') as video_file:
@@ -206,7 +235,7 @@ def download_video(url,filename):
 
 def downloader(course):
     course_name = course["name"]
-    course_file = course["files"]
+    course_files = course["files"]
     preview_id = course["trailer_jwplayer_id"]
     publish_state = course["status"]
     if(publish_state == "published"):
@@ -215,12 +244,14 @@ def downloader(course):
         if not os.path.exists(course_name):
             os.makedirs(course_name)
         os.chdir(course_name)
-        if(len(course_file) > 0):
-            pbar = tqdm(course_file)
+        if(len(course_files) > 0):
+            pbar = tqdm(course_files)
             for i in pbar:
-                command = "curl '{}' --output '{}' -s".format(i["url"],i["name"])
-                os.popen(command).read()
                 pbar.set_description("Downloading course file: %s" % i["name"])
+                course_file = requests.get(i["url"])
+                if(i["name"].split('.')[-1] != "zip"):
+                    i["name"] = i["name"] + '.zip'
+                open(i["name"], 'wb').write(course_file.content)
                 pbar.update()
         if(preview_id != ""):
             course_preview = course_preview_meta_getter(preview_id,quality)
@@ -268,20 +299,31 @@ if __name__ == '__main__':
     else:
         os.system('clear')
     print("INE Courses Downloader\n")
-    if(len(access_token) == 0):
-        print("Please refer to readme.md in github and set the access_token")
-        exit()
-    if(len(access_token) != 1009):
-        print("Access token entered is faulty. Check for and correct errors!")
-        exit()
-    if(len(refresh_token) == 0):
-        print("Please refer to readme.md in github and set the refresh_token")
-        exit()
-    if(len(refresh_token) != 1784):
-        print("Refresh token entered is faulty. Check and correct errors!")
-        exit()
+    if(os.path.isfile(token_path)):
+        with open(token_path,'r') as fp:
+            try:
+                fp = json.loads(fp.read())
+                access_token = fp["access_token"]
+                refresh_token = fp["refresh_token"]
+                access_token = "Bearer "+ access_token
+            except:
+                print("Please check the data in token file and correct for errors")
+        if(len(access_token) == 0):
+            print("Please refer to readme.md in github and set the access_token")
+            exit()
+        if(len(access_token) != 1009):
+            print("Access token entered is faulty. Check for and correct errors!")
+            exit()
+        if(len(refresh_token) == 0):
+            print("Please refer to readme.md in github and set the refresh_token")
+            exit()
+        if(len(refresh_token) != 1784):
+            print("Refresh token entered is faulty. Check and correct errors!")
+            exit()
+        auth_check()
+    else:
+        login()
     print("Warning! Until the script completes execution do not access INE website or mobile app\n as it might invalidate the session!\n")
-    auth_check()
     access_pass = pass_validator()
     method = int(input("Choose Method Of Operation:\n1.Site Rip\n2.Select Individual Course\n"))
     if (os.path.isfile(course_list_path)):
@@ -321,7 +363,6 @@ if __name__ == '__main__':
                 print("Your pass does not allow access to this course\n skipping this course..\n")
         os.remove(course_completed_path)
         print("Site rip is done!\n")
-
 
     else:
         choice = int(input("Choose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n"))
