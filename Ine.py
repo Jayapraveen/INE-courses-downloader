@@ -226,8 +226,8 @@ def downloader(course):
             course_preview = course_preview_meta_getter(preview_id,quality)
             download_video(course_preview[1],course_preview[0])
         folder_index = 1
-        pbar = tqdm(total=len(course_meta))
-        for i in course_meta:
+        pbar = tqdm(course_meta)
+        for i in pbar:
             pbar.set_description("Downloading: %s" % course_name)
             if i["content_type"] == "group":
                 folder_name = str(folder_index) + '.' +i["name"]
@@ -255,7 +255,7 @@ def downloader(course):
                 os.chdir('../')
             else:
                 print("The content type is not a group")
-            pbar.update(1)
+            pbar.update()
         os.chdir('../')
         print("Course downloaded successfully\n")
     else:
@@ -301,7 +301,7 @@ if __name__ == '__main__':
             exit()
         print("\nInitializing for Site dump\n")
         total_course = len(all_courses)
-        course_batch = 20
+        course_batch = 16
         if (os.path.isfile(course_completed_path)):
             with open(course_completed_path,'r') as cc:
                 completed_course = int(cc.readline()) + 1
