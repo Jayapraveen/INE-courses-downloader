@@ -1,10 +1,10 @@
 """
-Version: 1.2.1 Stable (beta release)
+Version: 1.2.4 Stable (beta release)
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 25/05/2020
+Date : 26/05/2020
 To Do:
 3. Optimize for efficiency and memory footprint
 4. Make program multithreaded
@@ -15,13 +15,12 @@ To Do:
 9. Reduce input faults if any
 10. Make more autonomous with cli invocation and args parsing
 Bug reporting: Please report them if any in issues tab
-Known bugs:
-1.Shutil causes peer closed issue
 """
 import requests
 import json
 import os
 import re
+import shutil
 from time import sleep
 from tqdm import tqdm
 
@@ -193,14 +192,16 @@ def download_video(url,filename):
     video = requests.get(url, stream=True)
     video_length = int(video.headers.get('content-length'))
     if video.status_code is 200:
-        with open(filename, 'wb') as video_file:
-            for chunk in video.iter_content(chunk_size=1024):
-                if chunk:
-                    video_file.write(chunk)
+        try:
+            with open(filename, 'wb') as video_file:
+                shutil.copyfileobj(video.raw, video_file)
+        except:
+            print("Connection error: Reattempting download..")
+            download_video(url,filename)
         if os.path.getsize(filename) >= video_length:
             pass
         else:
-            print("error downloaded video is faulty.. Retrying to download")
+            print("Error downloaded video is faulty.. Retrying to download")
             download_video(url,filename)
 
 def downloader(course):
@@ -223,21 +224,30 @@ def downloader(course):
         if(preview_id != ""):
             course_preview = course_preview_meta_getter(preview_id,quality)
             download_video(course_preview[1],course_preview[0])
+        folder_index = 1
         for i in course_meta:
             pbar.set_description("Downloading: %s" % course_name)
             if i["content_type"] == "group":
                 if not os.path.exists(i["name"]):
-                    os.makedirs(i["name"])
-                os.chdir(i["name"])
+                    folder_name = str(folder_index) + '.' +i["name"]
+                    os.makedirs(folder_name)
+                os.chdir(folder_name)
+                folder_index = folder_index + 1
+                subfolder_index = 1
                 with tqdm(i["content"]) as pbar:
                     for j in pbar:
                         if(j["content_type"] == "topic"):
                             if not os.path.exists(j["name"]):
-                                os.makedirs(j["name"])
-                            os.chdir(j["name"])
+                                subfolder_name = str(subfolder_index) + '.' + j["name"]
+                                os.makedirs(subfolder_name)
+                            os.chdir(subfolder_name)
+                            subfolder_index = subfolder_index + 1
+                            video_index = 1
                             for k in j["content"]:
                                 if(k["content_type"] == "video"):
                                     out = get_meta(k["uuid"])
+                                    out[0] = str(video_index) + '.' + out[0]
+                                    video_index = video_index + 1
                                     download_video(out[1],out[0])
                             os.chdir('../')
                     pbar.update()
