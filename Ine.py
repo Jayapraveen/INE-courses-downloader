@@ -228,8 +228,8 @@ def downloader(course):
         for i in course_meta:
             pbar.set_description("Downloading: %s" % course_name)
             if i["content_type"] == "group":
-                if not os.path.exists(i["name"]):
-                    folder_name = str(folder_index) + '.' +i["name"]
+                folder_name = str(folder_index) + '.' +i["name"]
+                if not os.path.exists(folder_name):
                     os.makedirs(folder_name)
                 os.chdir(folder_name)
                 folder_index = folder_index + 1
@@ -237,8 +237,8 @@ def downloader(course):
                 with tqdm(i["content"]) as pbar:
                     for j in pbar:
                         if(j["content_type"] == "topic"):
-                            if not os.path.exists(j["name"]):
-                                subfolder_name = str(subfolder_index) + '.' + j["name"]
+                            subfolder_name = str(subfolder_index) + '.' + j["name"]
+                            if not os.path.exists(subfolder_name):
                                 os.makedirs(subfolder_name)
                             os.chdir(subfolder_name)
                             subfolder_index = subfolder_index + 1
