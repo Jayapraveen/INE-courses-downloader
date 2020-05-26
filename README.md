@@ -3,18 +3,9 @@
 ## How to use ?
 
 1. Clone the repository
-2. Go to https://my.ine.com/login
-3. Open developer console 
-4. Go to network tab
-5. Login to the website using your credentials
-6. Look for the "authenticate" xhr request in your network tab (Look below)
-7. Copy the tokens
-8. Open "ine_tokens.txt" in your IDE/Text Editor
-9. Fill the access_token field with the Bearer token and refresh field with refresh_token  and close the tokens.txt file
-10. To specify the download location open and change the custom Boolean to true and fill the save_path with your download location and save the script
-11. Save and run the script
-
-[Obtain Token](https://github.com/Jayapraveen/INE-courses-downloader/raw/master/screenshots/image.png)
+2. Run the script and Choose options accordingly
+3. To specify the download location open and change the custom Boolean to true and fill the save_path with your download location and save the script
+4. Save and run the script
 
 ## Credits
 Made possible by @dexter101010 and his yummy cookies.
