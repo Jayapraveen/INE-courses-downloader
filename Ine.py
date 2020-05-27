@@ -1,10 +1,10 @@
 """
-Version: 1.2.6 Stable (beta release)
+Version: 1.2.8 Stable (beta release)
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 26/05/2020
+Date : 27/05/2020
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -254,7 +254,7 @@ def downloader(course):
             for i in pbar:
                 pbar.set_description("Downloading course file: %s" % i["name"])
                 course_file = requests.get(i["url"])
-                if(i["name"].split('.')[-1] != "zip"):
+                if(name.split('.')[-1] not in ["zip","pdf"]):
                     i["name"] = i["name"] + '.zip'
                 open(i["name"], 'wb').write(course_file.content)
                 pbar.update()
