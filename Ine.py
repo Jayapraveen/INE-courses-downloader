@@ -20,6 +20,7 @@ import os
 import re
 import shutil
 import getpass
+import multiprocessing
 from time import sleep
 from tqdm import tqdm
 #script location
@@ -194,8 +195,7 @@ def get_meta(uuid):
         print("No access to video metadata;\nToken expired. Trying to refresh ..")
         access_token_refetch()
         print("Resuming operations..")
-        get_meta(uuid)
-        exit()
+        return get_meta(uuid)
 
 
 def coursemeta_fetcher():
@@ -343,24 +343,27 @@ if __name__ == '__main__':
             exit()
         print("\nInitializing for Site dump\n")
         total_course = len(all_courses)
-        course_batch = 16
+        course_batch = int(multiprocessing.cpu_count() / 2)
         if (os.path.isfile(course_completed_path)):
             with open(course_completed_path,'r') as cc:
                 completed_course = int(cc.readline()) + 1
         else:
             completed_course = 0
-        for i in range(completed_course,total_course):
-            print("Course NO:",i)
-            if(i % course_batch == 0 and i != 0):
-                print('Course batch complete \nWaiting 1 minute before resuming')
-                access_token_refetch()
-                sleep(60)
-            course = all_courses[i]
-            if(course["access"]["related_passes"][0]["name"] in access_pass):
-                downloader(course)
-                update_downloaded(str(i))
+        for i in range(completed_course,total_course,course_batch):
+            if(i + course_batch > total_course):
+                this_session = (i + course_batch) - total_course
             else:
-                print("Your pass does not allow access to this course\n skipping this course..\n")
+            	this_session = i + course_batch
+            cpbar = tqdm(total = course_batch)
+            print("\nCourses to be downloaded this batch:",i," to ",this_session)
+            pool = multiprocessing.Pool(multiprocessing.cpu_count())  # Num of CPUs
+            with pool as p:
+                p.map(downloader,(all_courses[j] for j in range(i, this_session) if all_courses[j]["access"]["related_passes"][0]["name"] in access_pass and 1 or print("Course not in subscription access pack. Skipping ..")))
+                p.close()
+                p.join()
+            update_downloaded(str(i))
+            print("\nCourse batch successfully completed downloading.. Starting Next batch..")
+            sleep(1)
         os.remove(course_completed_path)
         print("Site rip is done!\n")
 
