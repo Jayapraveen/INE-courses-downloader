@@ -167,9 +167,13 @@ def sanitize(course_name):
     if(course_name.split(':')[0] == "Video"):
         course_name = course_name.split('/')[-1]
         course_name = re.sub('/',' ',course_name)
+        if os.name == 'nt':
+            course_name = re.sub('::',' ',course_name)
         return course_name
     else:
         course_name = re.sub('/',' ',course_name)
+        if os.name == 'nt':
+            course_name = re.sub('::',' ',course_name)
         return course_name + '.mp4'
 
 #Video metadata getter
@@ -234,6 +238,8 @@ def download_video(url,filename):
 
 def downloader(course):
     course_name = course["name"]
+    if os.name == 'nt':
+        course_name = re.sub('::',' ',course_name)
     course_files = course["files"]
     preview_id = course["trailer_jwplayer_id"]
     publish_state = course["status"]
