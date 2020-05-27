@@ -7,7 +7,6 @@ Location : India
 Date : 26/05/2020
 To Do:
 3. Optimize for efficiency and memory footprint
-4. Make program multithreaded
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
 8. Move all configurations to seperate configuration file
 10. Make more autonomous with cli invocation and args parsing
