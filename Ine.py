@@ -1,10 +1,10 @@
 """
-Version: 1.2.8 Stable (beta release)
+Version: 1.2.9 Stable release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 27/05/2020
+Date : 29/05/2020
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -133,14 +133,21 @@ def course_preview_meta_getter(preview_id,quality):
     out = []
     title = video["title"] + '.mp4'
     out.append(title)
-    video = video["playlist"][0]["sources"]
-    for i in video:
+    next_quality = quality - 360
+    video_list = video["playlist"][0]["sources"]
+    video = 0
+    for i in video_list:
         try:
             if(i["height"] == quality):
                 video = i["file"]
-                out.append(video)
+            elif(i["height"] == next_quality):
+                next_quality_video = i["file"]
         except:
             continue
+    if (video == 0):
+        out.append(next_quality_video)
+    else:
+        out.append(video)
     return out
 
 
@@ -184,21 +191,34 @@ def get_meta(uuid):
     if out.status_code == 200:
         out = json.loads(out.text)
         name = sanitize(out["title"])
+        subtitle = 0
+        video = 0
+        next_quality = quality - 360
         for i in out["playlist"][0]["sources"]:
             try:
                 if(i["height"] == quality):
                     video = i["file"]
+                elif(i["height"] == next_quality):
+                    next_quality_video = i["file"]
             except:
                 continue
+        if (video == 0):
+            print("Preferred video not available. Next quality video is chosen..\n")
+            video = next_quality_video
+        for i in out["playlist"][0]["tracks"]:
+            if(i["kind"] == "captions"):
+                subtitle = i["file"]
         out = []
         out.append(name)
         out.append(video)
+        if (subtitle):
+            out.append(subtitle)
         return out
     elif(out.status_code == 403):
         print("No access to video metadata;\nToken expired. Trying to refresh ..")
         access_token_refetch()
         print("Resuming operations..")
-        return get_meta(uuid)
+        get_meta(uuid)
 
 
 def coursemeta_fetcher():
@@ -236,6 +256,17 @@ def download_video(url,filename):
             print("Error downloaded video is faulty.. Retrying to download")
             download_video(url,filename)
 
+def download_subtitle(title,url):
+    title = title.split('.')[-2] + '.srt'
+    url = requests.get(url, stream = True, allow_redirects = True)
+    if (url.status_code == 200):
+        try:
+            with open(title, 'wb') as subtitle:
+                shutil.copyfileobj(url.raw, subtitle)
+        except:
+            print("Connection error: Reattempting download..")
+            download_subtitle(url,title)
+
 def downloader(course):
     course_name = course["name"]
     if os.name == 'nt':
@@ -254,7 +285,7 @@ def downloader(course):
             for i in pbar:
                 pbar.set_description("Downloading course file: %s" % i["name"])
                 course_file = requests.get(i["url"])
-                if(name.split('.')[-1] not in ["zip","pdf"]):
+                if(i["name"].split('.')[-1] not in ["zip","pdf"]):
                     i["name"] = i["name"] + '.zip'
                 open(i["name"], 'wb').write(course_file.content)
                 pbar.update()
@@ -287,6 +318,11 @@ def downloader(course):
                                     out[0] = str(video_index) + '.' + out[0]
                                     video_index = video_index + 1
                                     download_video(out[1],out[0])
+                                    try:
+                                        if(out[2]):
+                                            download_subtitle(out[0],out[2])
+                                    except:
+                                        pass
                             os.chdir('../')
                 os.chdir('../')
             else:
@@ -363,7 +399,7 @@ if __name__ == '__main__':
             print("\nCourses to be downloaded this batch:",i," to ",this_session)
             pool = multiprocessing.Pool(multiprocessing.cpu_count())  # Num of CPUs
             with pool as p:
-                p.map(downloader,(all_courses[j] for j in range(i, this_session) if all_courses[j]["access"]["related_passes"][0]["name"] in access_pass and 1 or print("Course not in subscription access pack. Skipping ..")))
+                p.map(downloader,(all_courses[j] for j in range(i, this_session) if (True if (len(all_courses[j]["access"]["related_passes"]) == 0) else True if (all_courses[j]["access"]["related_passes"][0]["name"] in access_pass) else False) and 1 or print("Course not in subscription access pack. Skipping ..")))
                 p.close()
                 p.join()
             update_downloaded(str(i))
