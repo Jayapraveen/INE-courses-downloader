@@ -1,5 +1,5 @@
 """
-Version: 1.2.9 Stabe release
+Version: 1.2.9 Stable release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
@@ -51,7 +51,7 @@ video_url = "https://video.rmotr.com/api/v1/videos/{}/media"
 subscription_url = "https://subscriptions.ine.com/subscriptions/subscriptions?embed=passes"
 refresh_token_url = "https://uaa.ine.com/uaa/auth/refresh-token"
 auth_check_url = "https://uaa.ine.com/uaa/auth/state/status"
-preview_url = "https://cdn.jwplayer.com/v2/media/"
+preview_url = "https://content.jwplatform.com/v2/media/" #https://cdn.jwplayer.com/v2/media/
 
 def login():
     global access_token
@@ -130,6 +130,9 @@ def course_preview_meta_getter(preview_id,quality):
     video_preview_url = preview_url + preview_id
     video = requests.get(video_preview_url)
     video = json.loads(video.text)
+    if(video["message"].split(':')[-1] == " id not found in index."):
+        out = [0]
+        return out
     out = []
     title = video["title"] + '.mp4'
     out.append(title)
@@ -219,7 +222,7 @@ def get_meta(uuid):
         print("No access to video metadata;\nToken expired. Trying to refresh ..")
         access_token_refetch()
         print("Resuming operations..")
-        get_meta(uuid)
+        return get_meta(uuid)
 
 
 def coursemeta_fetcher():
@@ -292,7 +295,8 @@ def downloader(course):
                 pbar.update()
         if(preview_id != ""):
             course_preview = course_preview_meta_getter(preview_id,quality)
-            download_video(course_preview[1],course_preview[0])
+            if(course_preview[0] != 0):
+                download_video(course_preview[1],course_preview[0])
         folder_index = 1
         pbar = tqdm(course_meta)
         for i in pbar:
