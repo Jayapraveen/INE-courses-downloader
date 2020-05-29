@@ -1,5 +1,5 @@
 """
-Version: 1.2.9 Stable release
+Version: 1.2.9 Stabe release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
@@ -161,6 +161,7 @@ def pass_validator():
             passes = passes["data"][0]["passes"]["data"]
             pass_avail = []
             for i in passes:
+                pass_avail.append(i["name"])
                 pass_avail.append("INE " + i["name"])
             return pass_avail
         else:
@@ -399,7 +400,7 @@ if __name__ == '__main__':
             print("\nCourses to be downloaded this batch:",i," to ",this_session)
             pool = multiprocessing.Pool(multiprocessing.cpu_count())  # Num of CPUs
             with pool as p:
-                p.map(downloader,(all_courses[j] for j in range(i, this_session) if (True if (len(all_courses[j]["access"]["related_passes"]) == 0) else True if (all_courses[j]["access"]["related_passes"][0]["name"] in access_pass) else False) and 1 or print("Course not in subscription access pack. Skipping ..")))
+                p.map(downloader,(all_courses[j] for j in range(i, this_session) if (False if (len(all_courses[j]["access"]["related_passes"]) == 0) else True if (all_courses[j]["access"]["related_passes"][0]["name"] in access_pass) else False) and 1 or print("Course not in subscription access pack. Skipping ..")))
                 p.close()
                 p.join()
             update_downloaded(str(i))
