@@ -138,6 +138,8 @@ def course_preview_meta_getter(preview_id,quality):
         pass
     out = []
     title = video["title"] + '.mp4'
+    if os.name == 'nt':
+        title = re.sub("[^0-9a-zA-Z.]+", "", title)
     out.append(title)
     next_quality = quality - 360
     video_list = video["playlist"][0]["sources"]
@@ -182,12 +184,12 @@ def sanitize(course_name):
         course_name = course_name.split('/')[-1]
         course_name = re.sub('/',' ',course_name)
         if os.name == 'nt':
-            course_name = re.sub('::',' ',course_name)
+            course_name = re.sub("[^0-9a-zA-Z.]+", "", course_name)
         return course_name
     else:
         course_name = re.sub('/',' ',course_name)
         if os.name == 'nt':
-            course_name = re.sub('::',' ',course_name)
+            course_name = re.sub("[^0-9a-zA-Z]+", "", course_name)
         return course_name + '.mp4'
 
 #Video metadata getter
@@ -290,7 +292,7 @@ def download_subtitle(title,url):
 def downloader(course):
     course_name = course["name"]
     if os.name == 'nt':
-        course_name = re.sub('::',' ',course_name)
+        course_name = re.sub("[^0-9a-zA-Z]+", "", course_name)
     course_files = course["files"]
     preview_id = course["trailer_jwplayer_id"]
     publish_state = course["status"]
