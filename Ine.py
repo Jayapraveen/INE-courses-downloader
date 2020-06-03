@@ -184,12 +184,12 @@ def sanitize(course_name):
         course_name = course_name.split('/')[-1]
         course_name = re.sub('/',' ',course_name)
         if os.name == 'nt':
-            course_name = re.sub("[^0-9a-zA-Z.]+", "", course_name)
+            course_name = re.sub("[^0-9a-zA-Z.\s]+", "", course_name)
         return course_name
     else:
         course_name = re.sub('/',' ',course_name)
         if os.name == 'nt':
-            course_name = re.sub("[^0-9a-zA-Z]+", "", course_name)
+            course_name = re.sub("[^0-9a-zA-Z\s]+", "", course_name)
         return course_name + '.mp4'
 
 #Video metadata getter
