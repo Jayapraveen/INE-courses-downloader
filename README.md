@@ -1,11 +1,25 @@
 # INE courses downloader
 
 ## How to use ?
-
 1. Clone the repository
 2. Run the script and Choose options accordingly
 3. To specify the download location open and change the custom Boolean to true and fill the save_path with your download location and save the script
 4. Save and run the script
+
+## What does this script download from the site?
+1. The Course Introduction(Preview)
+2. The Course files (if any)
+3. The Course videos
+
+## FAQ
+1. Is it safe to enter my credentials in this script?
+-- The script is opensource you can view the code execution and network calls. It is totally safe as this script will only use it once to get the tokens to download the courses.
+
+2. What is the site rip option?
+-- It is a complete site download option. If you have a server with Huge Bandwidth , Compute time and disk space (~ 1.8 TB ) You can use use this option to download the entire contents of the website.
+
+3. I have a course in the site that is not showing in the script to download?
+-- Is the Course featured on the site or was the course added to the site after you ran the script for the first time then delete the "ine_courses.txt" file from the directory where the script is located and rerun the script.
 
 ## Credits
 Made possible by @dexter101010 and his yummy cookies.
@@ -16,4 +30,5 @@ Made possible by @dexter101010 and his yummy cookies.
 3. Redistribution of the material downloaded using this script is against the likeness of the author.
 
 :) Happy Learning
+
  

@@ -1,10 +1,10 @@
 """
-Version: 1.2.9 Stable release
+Version: 1.3.1 Stable release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 29/05/2020
+Date : 03/06/2020
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -51,7 +51,7 @@ video_url = "https://video.rmotr.com/api/v1/videos/{}/media"
 subscription_url = "https://subscriptions.ine.com/subscriptions/subscriptions?embed=passes"
 refresh_token_url = "https://uaa.ine.com/uaa/auth/refresh-token"
 auth_check_url = "https://uaa.ine.com/uaa/auth/state/status"
-preview_url = "https://content.jwplatform.com/v2/media/" #https://cdn.jwplayer.com/v2/media/
+preview_url = "https://content.jwplatform.com/v2/media/"
 
 def login():
     global access_token
@@ -130,9 +130,12 @@ def course_preview_meta_getter(preview_id,quality):
     video_preview_url = preview_url + preview_id
     video = requests.get(video_preview_url)
     video = json.loads(video.text)
-    if(video["message"].split(':')[-1] == " id not found in index."):
-        out = [0]
-        return out
+    try:
+        if(video["message"].split(':')[-1] == " id not found in index."):
+            out = [0]
+            return out
+    except:
+        pass
     out = []
     title = video["title"] + '.mp4'
     out.append(title)
@@ -198,17 +201,25 @@ def get_meta(uuid):
         subtitle = 0
         video = 0
         next_quality = quality - 360
+        inferior_quality = next_quality - 360
         for i in out["playlist"][0]["sources"]:
             try:
                 if(i["height"] == quality):
                     video = i["file"]
                 elif(i["height"] == next_quality):
-                    next_quality_video = i["file"]
+                    next_quality = i["file"]
+                elif(i["height"] == inferior_quality):
+                    inferior_quality = i["file"]
             except:
                 continue
         if (video == 0):
-            print("Preferred video not available. Next quality video is chosen..\n")
-            video = next_quality_video
+            print("Preferred video not available.")
+            if(next_quality == quality-360):
+                print("Inferior quality video is only available and it is chosen..\n")
+                video = inferior_quality
+            else:
+                print("Next quality video is chosen..\n")
+                video = next_quality
         for i in out["playlist"][0]["tracks"]:
             if(i["kind"] == "captions"):
                 subtitle = i["file"]
@@ -248,12 +259,16 @@ def download_video(url,filename):
     video_length = int(video.headers.get('content-length'))
     filename = filename
     if video.status_code is 200:
-        try:
-            with open(filename, 'wb') as video_file:
-                shutil.copyfileobj(video.raw, video_file)
-        except:
-            print("Connection error: Reattempting download..")
-            download_video(url,filename)
+        if(os.path.isfile(filename) and os.path.getsize(filename) >= video_length):
+            print("Video already downloaded.. skipping write to disk..")
+        else:
+            try:
+                with open(filename, 'wb') as video_file:
+                    shutil.copyfileobj(video.raw, video_file)
+            except:
+                print("Connection error: Reattempting download..")
+                download_video(url,filename)
+
         if os.path.getsize(filename) >= video_length:
             pass
         else:
@@ -261,7 +276,8 @@ def download_video(url,filename):
             download_video(url,filename)
 
 def download_subtitle(title,url):
-    title = title.split('.')[-2] + '.srt'
+    if(title.split('.')[-1] not in ['zip','rar']):
+        title = title.split('.')[-2] + '.srt'
     url = requests.get(url, stream = True, allow_redirects = True)
     if (url.status_code == 200):
         try:
@@ -389,7 +405,7 @@ if __name__ == '__main__':
             exit()
         print("\nInitializing for Site dump\n")
         total_course = len(all_courses)
-        course_batch = int(multiprocessing.cpu_count() / 2)
+        course_batch = multiprocessing.cpu_count() // 2
         if (os.path.isfile(course_completed_path)):
             with open(course_completed_path,'r') as cc:
                 completed_course = int(cc.readline()) + 1
@@ -417,12 +433,16 @@ if __name__ == '__main__':
         choice = int(input("Choose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n"))
         if(choice == 1):
             url = input("Paste the url\n")
+            flag = 1
             try:
                 for i in all_courses:
                     if(i["url"] == url):
                         choice = i
-            except Exception as e:
-                print('URL not found, Choose other method for selecting course\n', e.args)
+                        flag = 0
+                if(flag == 1):
+                    raise Exception
+            except:
+                print('Course not found,Recheck url or Choose other method for selecting course\n')
                 exit()
             course = choice
             if(course["access"]["related_passes"][0]["name"] in access_pass):
