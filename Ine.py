@@ -240,14 +240,12 @@ def get_meta(uuid):
 
 def coursemeta_fetcher():
     all_courses = requests.get(all_courses_url)
-    course_handler = open(course_list_path,'w', encoding ='utf8')
-    course_handler.write(all_courses.text)
-    course_handler.close()
+    with open(course_list_path,'w', encoding ='utf8') as course_handler:
+        course_handler.write(all_courses.text)
 
 def total_courses():
-    course_handler = open(course_list_path,'r', encoding ='utf8')
-    all_courses = json.loads(course_handler.readline())
-    course_handler.close()
+    with open(course_list_path,'r', encoding ='utf8') as course_handler:
+        all_courses = json.loads(course_handler.read())
     length = len(all_courses)
     count = 0
     for i in all_courses:
