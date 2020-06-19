@@ -1,10 +1,10 @@
 """
-Version: 1.3.1 Stable release
+Version: 1.3.2 Stable release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 03/06/2020
+Date : 19/06/2020
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
