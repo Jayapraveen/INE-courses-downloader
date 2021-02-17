@@ -1,10 +1,10 @@
 """
-Version: 1.3.2 Stable release
+Version: 1.3.3 Stable release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 19/06/2020
+Date : 17/02/2021
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -13,13 +13,7 @@ To Do:
 Bug reporting: Please report them if any in issues tab
 """
 
-import requests
-import json
-import os
-import re
-import shutil
-import getpass
-import multiprocessing
+import requests,json,os,re,shutil,getpass,multiprocessing
 from time import sleep
 from tqdm import tqdm
 #script location
@@ -29,10 +23,7 @@ course_completed_path = script_path + '/ine_completed_course.txt'
 course_list_path = script_path + '/ine_courses.txt'
 #Download location
 custom = False
-if(custom):
-    save_path = ""
-else:
-    save_path = "./"
+save_path = "download_location" if(custom) else "./"
 #headers
 accept = "application/json, text/plain, */*"
 x_requested_with = "com.my.ine"
@@ -49,6 +40,7 @@ login_url = "https://uaa.ine.com/uaa/authenticate"
 all_courses_url = "https://content-api.rmotr.com/api/v1/courses?active=true&page_size=none&ordering=-created"
 video_url = "https://video.rmotr.com/api/v1/videos/{}/media"
 subscription_url = "https://subscriptions.ine.com/subscriptions/subscriptions?embed=passes"
+passes_url = "https://subscriptions.ine.com/subscriptions/passes?embed=learning_areas"
 refresh_token_url = "https://uaa.ine.com/uaa/auth/refresh-token"
 auth_check_url = "https://uaa.ine.com/uaa/auth/state/status"
 preview_url = "https://content.jwplatform.com/v2/media/"
@@ -159,25 +151,40 @@ def course_preview_meta_getter(preview_id,quality):
     return out
 
 
-def pass_validator():
+def pass_validator(sub_url = subscription_url,epoch = 0):
+    global siterip
+    if(epoch == 1):
+        exit("No Subscription found! Program cannot proceed further..")
     host = "subscriptions.ine.com"
     header = {"Host": host,"Origin": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Referer": referer}
-    passes = requests.get(subscription_url,headers = header)
+    passes = requests.get(sub_url,headers = header)
     if(passes.status_code == 200):
         passes = json.loads(passes.text)
-        if(len(passes["data"]) != 0):
-            passes = passes["data"][0]["passes"]["data"]
+        if(len(passes["data"])):
             pass_avail = []
-            for i in passes:
-                pass_avail.append(i["name"])
-                pass_avail.append("INE " + i["name"])
-            return pass_avail
+            pass_avail.append("B2B Enterprise") #Temorary fix for some starter Pass courses
+            try:
+                siterip = 1
+                passes = passes["data"][0]["passes"]["data"]
+                for i in passes:
+                    pass_avail.append(i["name"])
+                    print(i["name"])
+                    pass_avail.append("INE " + i["name"])
+            except:
+                siterip = 0
+                print("Free Subscription Detected! Certain operations limited.. \n")
+                passes = passes["data"]
+                for passinfo in passes:
+                    pass_avail.append(passinfo.get("name",None))
+                    pass_avail.append("INE " + passinfo.get("name",0))
+                return pass_avail
         else:
-            print("No subscriptions found in your account! Program cannot proceed further\n")
-            exit()
+            print("No subscriptions found in your account! Checking for Passes..\n")
+            pass_avail = pass_validator(passes_url)
+            return pass_avail
     elif(passes.status_code == 500):
-        print("Ine Subscriptions Server error\n")
-    return passes
+        exit("Ine Subscriptions Server error\n")
+
 
 def sanitize(course_name):
     if(course_name.split(':')[0] == "Video"):
@@ -387,17 +394,14 @@ if __name__ == '__main__':
         login()
     print("Warning! Until the script completes execution do not access INE website or mobile app\n as it might invalidate the session!\n")
     access_pass = pass_validator()
-    method = int(input("Choose Method Of Operation:\n1.Site Rip\n2.Select Individual Course\n"))
+    method = int(input("Choose Method Of Operation: \n1.Site Rip \n2.Select Individual Course")) if siterip else 2
     if (os.path.isfile(course_list_path)):
         all_courses = total_courses()
     else:
         coursemeta_fetcher()
         all_courses = total_courses()
     quality = int(input("Choose Preferred Video Quality\n1.1080p\n2.720p\n"))
-    if(quality == 2):
-        quality = 720
-    else:
-        quality = 1080
+    quality = 720 if(quality == 2) else 1080
     if(method == 1):
         cons = input("Warning! This is a high compute and throughput functionality and needs\nlots and lots of compute time and storage space \nEnter \"I agree\" to acknowledge and proceed!\n")
         if(cons != "I agree"):
@@ -457,7 +461,7 @@ if __name__ == '__main__':
             if(course["access"]["related_passes"][0]["name"] in access_pass):
                 downloader(course)
             else:
-                print("You do not have the subscription pass to access to this course")
+                print("You do not have the subscription/pass to access to this course")
                 exit()
         else:
             exit("Invalid choice!\n")

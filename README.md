@@ -2,9 +2,9 @@
 
 ## How to use ?
 1. Clone the repository
-2. Run the script and Choose options accordingly
-3. To specify the download location open and change the custom Boolean to true and fill the save_path with your download location and save the script
-4. Save and run the script
+2. Install the requirements using "pip install -r requirements.txt" or changing the command according to your environment. 
+3. To specify the download location, open and change the "custom" Boolean to true and fill the save_path with your download location and save the script
+4. Run the script and choose options accordingly
 
 ## What does this script download from the site?
 1. The Course Introduction(Preview)
