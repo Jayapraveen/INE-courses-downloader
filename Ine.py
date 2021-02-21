@@ -1,10 +1,10 @@
 """
-Version: 1.3.3 Stable release
+Version: 1.3.4 Stable release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 17/02/2021
+Date : 21/02/2021
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -153,7 +153,7 @@ def course_preview_meta_getter(preview_id,quality):
 
 def pass_validator(sub_url = subscription_url,epoch = 0):
     global siterip
-    if(epoch == 1):
+    if(epoch == 2):
         exit("No Subscription found! Program cannot proceed further..")
     host = "subscriptions.ine.com"
     header = {"Host": host,"Origin": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Referer": referer}
@@ -162,28 +162,25 @@ def pass_validator(sub_url = subscription_url,epoch = 0):
         passes = json.loads(passes.text)
         if(len(passes["data"])):
             pass_avail = []
-            pass_avail.append("B2B Enterprise") #Temorary fix for some starter Pass courses
             try:
                 siterip = 1
                 passes = passes["data"][0]["passes"]["data"]
                 for i in passes:
                     pass_avail.append(i["name"])
-                    print(i["name"])
                     pass_avail.append("INE " + i["name"])
             except:
                 siterip = 0
-                print("Free Subscription Detected! Certain operations limited.. \n")
+                print("Free Subscription Detected! Do not enter courses not accessible with your account... \n")
                 passes = passes["data"]
                 for passinfo in passes:
                     pass_avail.append(passinfo.get("name",None))
                     pass_avail.append("INE " + passinfo.get("name",0))
-                return pass_avail
         else:
             print("No subscriptions found in your account! Checking for Passes..\n")
-            pass_avail = pass_validator(passes_url)
-            return pass_avail
+            pass_avail = pass_validator(passes_url,epoch + 1)
     elif(passes.status_code == 500):
         exit("Ine Subscriptions Server error\n")
+    return pass_avail
 
 
 def sanitize(course_name):
@@ -265,7 +262,7 @@ def download_video(url,filename):
     video = requests.get(url, stream=True)
     video_length = int(video.headers.get('content-length'))
     filename = filename
-    if video.status_code is 200:
+    if video.status_code == 200:
         if(os.path.isfile(filename) and os.path.getsize(filename) >= video_length):
             print("Video already downloaded.. skipping write to disk..")
         else:
@@ -273,7 +270,7 @@ def download_video(url,filename):
                 with open(filename, 'wb') as video_file:
                     shutil.copyfileobj(video.raw, video_file)
             except:
-                print("Connection error: Reattempting download..")
+                print("Connection error: Reattempting download of video..")
                 download_video(url,filename)
 
         if os.path.getsize(filename) >= video_length:
@@ -291,7 +288,7 @@ def download_subtitle(title,url):
             with open(title, 'wb') as subtitle:
                 shutil.copyfileobj(url.raw, subtitle)
         except:
-            print("Connection error: Reattempting download..")
+            print("Connection error: Reattempting download of subtitiles..")
             download_subtitle(url,title)
 
 def downloader(course):
@@ -363,10 +360,7 @@ def downloader(course):
 
 
 if __name__ == '__main__':
-    if os.name == 'nt':
-        os.system('cls')
-    else:
-        os.system('clear')
+    os.system('cls') if os.name == 'nt' else os.system('clear')
     print("INE Courses Downloader\n")
     if(os.path.isfile(token_path)):
         with open(token_path,'r') as fp:
@@ -394,7 +388,7 @@ if __name__ == '__main__':
         login()
     print("Warning! Until the script completes execution do not access INE website or mobile app\n as it might invalidate the session!\n")
     access_pass = pass_validator()
-    method = int(input("Choose Method Of Operation: \n1.Site Rip \n2.Select Individual Course")) if siterip else 2
+    method = int(input("Choose Method Of Operation: \n1.Site Rip \n2.Select Individual Course ")) if siterip else 2
     if (os.path.isfile(course_list_path)):
         all_courses = total_courses()
     else:
@@ -424,7 +418,7 @@ if __name__ == '__main__':
             print("\nCourses to be downloaded this batch:",i," to ",this_session)
             pool = multiprocessing.Pool(multiprocessing.cpu_count())  # Num of CPUs
             with pool as p:
-                p.map(downloader,(all_courses[j] for j in range(i, this_session) if (False if (len(all_courses[j]["access"]["related_passes"]) == 0) else True if (all_courses[j]["access"]["related_passes"][0]["name"] in access_pass) else False) and 1 or print("Course not in subscription access pack. Skipping ..")))
+                p.map(downloader,(all_courses[j] for j in range(i, this_session) if (False if (len(all_courses[j]["access"]["related_passes"]) == 0) else True if (all_courses[j]["access"]["related_passes"][4]["name"] in access_pass) else False) and 1 or print("Course not in subscription access pack. Skipping ..")))
                 p.close()
                 p.join()
             update_downloaded(str(i))
@@ -434,6 +428,7 @@ if __name__ == '__main__':
         print("Site rip is done!\n")
 
     else:
+        print("Free Subscription Detected! Do not enter courses not accessible with your account...\n") if siterip == 0 else 0
         choice = int(input("Choose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n"))
         if(choice == 1):
             url = input("Paste the url\n")
@@ -449,7 +444,7 @@ if __name__ == '__main__':
                 print('Course not found,Recheck url or Choose other method for selecting course\n')
                 exit()
             course = choice
-            if(course["access"]["related_passes"][0]["name"] in access_pass):
+            if(course["access"]["related_passes"][4]["name"] in access_pass):
                 downloader(course)
             else:
                 print("You do not have the subscription pass access to this course")
@@ -458,10 +453,9 @@ if __name__ == '__main__':
         elif(choice == 2):
             choice = int(input("Please enter the number corresponding to the course you would like to download\n"))
             course = all_courses[choice]
-            if(course["access"]["related_passes"][0]["name"] in access_pass):
+            if(course["access"]["related_passes"][4]["name"] in access_pass):
                 downloader(course)
             else:
-                print("You do not have the subscription/pass to access to this course")
-                exit()
+                exit("You do not have the subscription/pass to access to this course")
         else:
             exit("Invalid choice!\n")
