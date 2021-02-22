@@ -1,10 +1,10 @@
 """
-Version: 1.3.4 Stable release
+Version: 1.3.5 Stable release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 21/02/2021
+Date : 22/02/2021
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -44,6 +44,8 @@ passes_url = "https://subscriptions.ine.com/subscriptions/passes?embed=learning_
 refresh_token_url = "https://uaa.ine.com/uaa/auth/refresh-token"
 auth_check_url = "https://uaa.ine.com/uaa/auth/state/status"
 preview_url = "https://content.jwplatform.com/v2/media/"
+#Pass Index
+pass_index_value = 4
 
 def login():
     global access_token
@@ -418,7 +420,7 @@ if __name__ == '__main__':
             print("\nCourses to be downloaded this batch:",i," to ",this_session)
             pool = multiprocessing.Pool(multiprocessing.cpu_count())  # Num of CPUs
             with pool as p:
-                p.map(downloader,(all_courses[j] for j in range(i, this_session) if (False if (len(all_courses[j]["access"]["related_passes"]) == 0) else True if (all_courses[j]["access"]["related_passes"][4]["name"] in access_pass) else False) and 1 or print("Course not in subscription access pack. Skipping ..")))
+                p.map(downloader,(all_courses[j] for j in range(i, this_session) if (False if (len(all_courses[j]["access"]["related_passes"]) == 0) else True if (all_courses[j]["access"]["related_passes"][pass_index_value]["name"] in access_pass) else False) and 1 or print("Course not in subscription access pack. Skipping ..")))
                 p.close()
                 p.join()
             update_downloaded(str(i))
@@ -429,7 +431,7 @@ if __name__ == '__main__':
 
     else:
         print("Free Subscription Detected! Do not enter courses not accessible with your account...\n") if siterip == 0 else 0
-        choice = int(input("Choose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n"))
+        choice = int(input("Choose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n3.Download a select number of courses from the above list\n4.Download a bunch of courses from the above list using a range "))
         if(choice == 1):
             url = input("Paste the url\n")
             flag = 1
@@ -444,18 +446,51 @@ if __name__ == '__main__':
                 print('Course not found,Recheck url or Choose other method for selecting course\n')
                 exit()
             course = choice
-            if(course["access"]["related_passes"][4]["name"] in access_pass):
+            if(course["access"]["related_passes"][pass_index_value]["name"] in access_pass):
                 downloader(course)
             else:
-                print("You do not have the subscription pass access to this course")
-                exit()
+                 exit("You do not have the subscription pass access to this course")
 
         elif(choice == 2):
             choice = int(input("Please enter the number corresponding to the course you would like to download\n"))
             course = all_courses[choice]
-            if(course["access"]["related_passes"][4]["name"] in access_pass):
+            if(course["access"]["related_passes"][pass_index_value]["name"] in access_pass):
                 downloader(course)
             else:
                 exit("You do not have the subscription/pass to access to this course")
+        elif(choice == 3):
+            print("Enter the course numbers to download. Enter \"Done\" to Finish entering courses")
+            course_list = []
+            while(True):
+                choice = input()
+                if(choice.lower() == "done"):
+                    break
+                else:
+                    if (0 <= int(choice) <= len(all_courses)):
+                        course_list.append(int(choice))
+                    else:
+                        print("Invalid Choice")
+                        continue
+            for course_select in course_list:
+                course = all_courses[course_select]
+                if(course["access"]["related_passes"][pass_index_value]["name"] in access_pass):
+                    downloader(course)
+                else:
+                    print("You do not have the subscription/pass to access to this course")
+                    continue
+        elif(choice == 4):
+            lowerlimit = int(input("Enter the starting course number(Inclusive)\n"))
+            upperlimit = int(input("Enter the closing course number(Inclusive)\n"))
+            if(lowerlimit < 0 or lowerlimit > len(all_courses) -1):
+                exit("Invalid lower limit..")
+            if(lowerlimit < 0 or upperlimit > len(all_courses) -1):
+                exit("Invalid upper limit..")
+            for course_select in range(lowerlimit,upperlimit + 1):
+                course = all_courses[course_select]
+                if(course["access"]["related_passes"][pass_index_value]["name"] in access_pass):
+                    downloader(course)
+                else:
+                    print("You do not have the subscription/pass to access to this course")
+                    continue
         else:
             exit("Invalid choice!\n")
