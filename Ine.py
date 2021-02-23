@@ -1,10 +1,10 @@
 """
-Version: 1.3.5 Stable release
+Version: 1.3.6 Stable release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 23/02/2021
+Date : 24/02/2021
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -208,28 +208,18 @@ def get_meta(uuid):
     if out.status_code == 200:
         out = json.loads(out.text)
         name = sanitize(out["title"])
-        subtitle = 0
-        video = 0
-        next_quality = quality - 360
-        inferior_quality = next_quality - 360
+        subtitle,video,maxquality,nextquality = 0,0,0,0
         for i in out["playlist"][0]["sources"]:
             try:
-                if(i["height"] == quality):
+                if(i["height"] > maxquality):
+                    nextvideo = video
                     video = i["file"]
-                elif(i["height"] == next_quality):
-                    next_quality = i["file"]
-                elif(i["height"] == inferior_quality):
-                    inferior_quality = i["file"]
             except:
                 continue
-        if (video == 0):
-            print("Preferred video not available.")
-            if(next_quality == quality-360):
-                print("Inferior quality video is only available and it is chosen..\n")
-                video = inferior_quality
-            else:
-                print("Next quality video is chosen..\n")
-                video = next_quality
+        if (quality == 1):
+            video = video
+        else:
+            video = nextvideo
         for i in out["playlist"][0]["tracks"]:
             if(i["kind"] == "captions"):
                 subtitle = i["file"]
@@ -354,10 +344,7 @@ def downloader(course):
                 os.chdir(folder_name)
                 folder_index = folder_index + 1
                 subfolder_index = 1
-                #with tqdm(i["content"], unit='videofile', unit_scale=True) as pbar:
-                    #for j in pbar:
                 for j in i["content"]:
-                    #print(j)
                     if(j["content_type"] == "topic"):
                         subfolder_name = str(subfolder_index) + '.' + j["name"]
                         if not os.path.exists(subfolder_name):
@@ -421,14 +408,13 @@ if __name__ == '__main__':
         login()
     print("Warning! Until the script completes execution do not access INE website or mobile app\n as it might invalidate the session!\n")
     access_pass = pass_validator()
-    method = int(input("Choose Method Of Operation: \n1.Site Rip \n2.Select Individual Course ")) if siterip else 2
+    method = int(input("Choose Method Of Operation: \n1.Site Rip \n2.Select Individual Course\n")) if siterip else 2
     if (os.path.isfile(course_list_path)):
         all_courses = total_courses()
     else:
         coursemeta_fetcher()
         all_courses = total_courses()
-    quality = int(input("Choose Preferred Video Quality\n1.1080p\n2.720p\n"))
-    quality = 720 if(quality == 2) else 1080
+    quality = int(input("Choose Preferred Video Quality\n1.Highest Available Quality (1080p)\n2.Next To Highest Quality (720p)\n"))
     if(method == 1):
         cons = input("Warning! This is a high compute and throughput functionality and needs\nlots and lots of compute time and storage space \nEnter \"I agree\" to acknowledge and proceed!\n")
         if(cons != "I agree"):
