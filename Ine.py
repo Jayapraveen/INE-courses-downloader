@@ -70,7 +70,7 @@ def login():
             auth_check()
     elif(login_data.status_code == 403):
         print("Username or password is incorrect\n ")
-        option = input("Choose from the following options:\n1.Relogin\n2.Exit")
+        option = int(input("Choose from the following options:\n1.Relogin\n2.Exit\n"))
         if(option == 1):
             login()
         else:
@@ -263,44 +263,50 @@ def total_courses():
     return all_courses
 
 def download_video(url,filename,epoch = 0):
-    video_head = requests.head(url, allow_redirects = True)
-    if video_head.status_code == 200:
-        video_length = int(video_head.headers.get("content-length"))
-        if(os.path.isfile(filename) and os.path.getsize(filename) >= video_length):
-            print("Video already downloaded.. skipping Downloading..")
-        else:
-            video = requests.get(url, stream=True)
-            video_length = int(video.headers.get("content-length"))
-            if video.status_code == 200:
-                if(os.path.isfile(filename) and os.path.getsize(filename) >= video_length):
-                    print("Video already downloaded.. skipping write to disk..")
-                else:
-                    try:
-                        with open(filename, 'wb') as video_file:
-                            shutil.copyfileobj(video.raw, video_file)
-                    except:
-                        print("Connection error: Reattempting download of video..")
-                        download_video(url,filename, epoch + 1)
-
-                if os.path.getsize(filename) >= video_length:
-                    pass
-                else:
-                    print("Error downloaded video is faulty.. Retrying to download")
-                    download_video(url,filename, epoch + 1)
+    if(os.path.isfile(filename)):
+        video_head = requests.head(url, allow_redirects = True)
+        if video_head.status_code == 200:
+            video_length = int(video_head.headers.get("content-length"))
+            if(os.path.getsize(filename) >= video_length):
+                print("Video already downloaded.. skipping Downloading..")
             else:
-                if (epoch > retry):
-                    exit("Error Video fetching exceeded retry times.")
-                print("Error fetching video file.. Retrying to download")
-                download_video(url,filename, epoch + 1)
+                print("Redownloading faulty download..")
+                os.remove(filename) #Improve removing logic
+                download_video(url,filename)
+        else:
+            if (epoch > retry):
+                exit("Server doesn't support HEAD.")
+            download_video(url,filename,epoch + 1)
     else:
-        if (epoch > retry):
-            exit("Server doesn't support HEAD.")
-        download_video(url,filename,epoch + 1)
+        video = requests.get(url, stream=True)
+        video_length = int(video.headers.get("content-length"))
+        if video.status_code == 200:
+            if(os.path.isfile(filename) and os.path.getsize(filename) >= video_length):
+                print("Video already downloaded.. skipping write to disk..")
+            else:
+                try:
+                    with open(filename, 'wb') as video_file:
+                        shutil.copyfileobj(video.raw, video_file)
+                except:
+                    print("Connection error: Reattempting download of video..")
+                    download_video(url,filename, epoch + 1)
+
+            if os.path.getsize(filename) >= video_length:
+                pass
+            else:
+                print("Error downloaded video is faulty.. Retrying to download")
+                download_video(url,filename, epoch + 1)
+        else:
+            if (epoch > retry):
+                exit("Error Video fetching exceeded retry times.")
+            print("Error fetching video file.. Retrying to download")
+            download_video(url,filename, epoch + 1)
 
 
 def download_subtitle(title,url):
     if(title.split('.')[-1] not in ['zip','rar']):
-        title = title.split('.')[-2] + '.srt'
+        title = title.split('.')
+        title = title[0] + '.' + title[-2] + ".srt"
     url = requests.get(url, stream = True, allow_redirects = True)
     if (url.status_code == 200):
         try:
@@ -324,22 +330,22 @@ def downloader(course):
             os.makedirs(course_name)
         os.chdir(course_name)
         if(len(course_files) > 0):
-            pbar = tqdm(course_files)
-            for i in pbar:
-                pbar.set_description("Downloading course file: %s" % i["name"])
+            filespbar = tqdm(course_files, unit='file', unit_scale=True)
+            for i in filespbar:
+                filespbar.set_description("Downloading course file: %s" % i["name"])
                 course_file = requests.get(i["url"])
                 if(i["name"].split('.')[-1] not in ["zip","pdf"]):
                     i["name"] = i["name"] + '.zip'
                 open(i["name"], 'wb').write(course_file.content)
-                pbar.update()
+                filespbar.update(1)
         if(preview_id != ""):
             course_preview = course_preview_meta_getter(preview_id,quality)
             if(course_preview[0] != 0):
                 download_video(course_preview[1],course_preview[0])
         folder_index = 1
-        pbar = tqdm(course_meta)
-        for i in pbar:
-            pbar.set_description("Downloading: %s" % course_name)
+        coursepbar = tqdm(course_meta, unit="course", unit_scale=True)
+        for i in coursepbar:
+            coursepbar.set_description("Downloading: %s" % course_name)
             if i["content_type"] == "group":
                 folder_name = str(folder_index) + '.' +i["name"]
                 if not os.path.exists(folder_name):
@@ -347,19 +353,21 @@ def downloader(course):
                 os.chdir(folder_name)
                 folder_index = folder_index + 1
                 subfolder_index = 1
-                with tqdm(i["content"], unit='iB', unit_scale=True) as pbar:
-                    for j in pbar:
-                        if(j["content_type"] == "topic"):
-                            subfolder_name = str(subfolder_index) + '.' + j["name"]
-                            if not os.path.exists(subfolder_name):
-                                os.makedirs(subfolder_name)
-                            os.chdir(subfolder_name)
-                            subfolder_index = subfolder_index + 1
-                            video_index = 1
-                            for k in j["content"]:
+                for j in i["content"]:
+                    if(j["content_type"] == "topic"):
+                        subfolder_name = str(subfolder_index) + '.' + j["name"]
+                        if not os.path.exists(subfolder_name):
+                            os.makedirs(subfolder_name)
+                        os.chdir(subfolder_name)
+                        subfolder_index = subfolder_index + 1
+                        video_index = 1
+                        with tqdm(j["content"], unit='videofile', unit_scale=True) as pbar:
+                            for k in pbar:
+                                #print(k)
                                 if(k["content_type"] == "video"):
                                     out = get_meta(k["uuid"])
                                     out[0] = str(video_index) + '.' + out[0]
+                                    pbar.set_description("Downloading: %s" %out[0])
                                     video_index = video_index + 1
                                     download_video(out[1],out[0])
                                     try:
@@ -367,11 +375,13 @@ def downloader(course):
                                             download_subtitle(out[0],out[2])
                                     except:
                                         pass
+                                    pbar.update()
                             os.chdir('../')
+
                 os.chdir('../')
             else:
                 print("The content type is not a group")
-            pbar.update()
+            coursepbar.update()
         os.chdir('../')
         print("Course downloaded successfully\n")
     else:
