@@ -4,7 +4,7 @@ Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 22/02/2021
+Date : 23/02/2021
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -23,7 +23,7 @@ course_completed_path = script_path + '/ine_completed_course.txt'
 course_list_path = script_path + '/ine_courses.txt'
 #Download location
 custom = False
-save_path = "download_location" if(custom) else "./"
+save_path = "download_location" if(custom) else os.getcwd()
 #headers
 accept = "application/json, text/plain, */*"
 x_requested_with = "com.my.ine"
@@ -46,6 +46,8 @@ auth_check_url = "https://uaa.ine.com/uaa/auth/state/status"
 preview_url = "https://content.jwplatform.com/v2/media/"
 #Pass Index
 pass_index_value = 4
+#Retry times
+retry = 4
 
 def login():
     global access_token
@@ -260,26 +262,41 @@ def total_courses():
     print ("Total {} courses\n".format(length))
     return all_courses
 
-def download_video(url,filename):
-    video = requests.get(url, stream=True)
-    video_length = int(video.headers.get('content-length'))
-    filename = filename
-    if video.status_code == 200:
+def download_video(url,filename,epoch = 0):
+    video_head = requests.head(url, allow_redirects = True)
+    if video_head.status_code == 200:
+        video_length = int(video_head.headers.get("content-length"))
         if(os.path.isfile(filename) and os.path.getsize(filename) >= video_length):
-            print("Video already downloaded.. skipping write to disk..")
+            print("Video already downloaded.. skipping Downloading..")
         else:
-            try:
-                with open(filename, 'wb') as video_file:
-                    shutil.copyfileobj(video.raw, video_file)
-            except:
-                print("Connection error: Reattempting download of video..")
-                download_video(url,filename)
+            video = requests.get(url, stream=True)
+            video_length = int(video.headers.get("content-length"))
+            if video.status_code == 200:
+                if(os.path.isfile(filename) and os.path.getsize(filename) >= video_length):
+                    print("Video already downloaded.. skipping write to disk..")
+                else:
+                    try:
+                        with open(filename, 'wb') as video_file:
+                            shutil.copyfileobj(video.raw, video_file)
+                    except:
+                        print("Connection error: Reattempting download of video..")
+                        download_video(url,filename, epoch + 1)
 
-        if os.path.getsize(filename) >= video_length:
-            pass
-        else:
-            print("Error downloaded video is faulty.. Retrying to download")
-            download_video(url,filename)
+                if os.path.getsize(filename) >= video_length:
+                    pass
+                else:
+                    print("Error downloaded video is faulty.. Retrying to download")
+                    download_video(url,filename, epoch + 1)
+            else:
+                if (epoch > retry):
+                    exit("Error Video fetching exceeded retry times.")
+                print("Error fetching video file.. Retrying to download")
+                download_video(url,filename, epoch + 1)
+    else:
+        if (epoch > retry):
+            exit("Server doesn't support HEAD.")
+        download_video(url,filename,epoch + 1)
+
 
 def download_subtitle(title,url):
     if(title.split('.')[-1] not in ['zip','rar']):
@@ -330,7 +347,7 @@ def downloader(course):
                 os.chdir(folder_name)
                 folder_index = folder_index + 1
                 subfolder_index = 1
-                with tqdm(i["content"]) as pbar:
+                with tqdm(i["content"], unit='iB', unit_scale=True) as pbar:
                     for j in pbar:
                         if(j["content_type"] == "topic"):
                             subfolder_name = str(subfolder_index) + '.' + j["name"]
@@ -431,7 +448,7 @@ if __name__ == '__main__':
 
     else:
         print("Free Subscription Detected! Do not enter courses not accessible with your account...\n") if siterip == 0 else 0
-        choice = int(input("Choose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n3.Download a select number of courses from the above list\n4.Download a bunch of courses from the above list using a range "))
+        choice = int(input("Choose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n3.Download a select number of courses from the above list\n4.Download a bunch of courses from the above list using a range\n"))
         if(choice == 1):
             url = input("Paste the url\n")
             flag = 1
@@ -483,7 +500,7 @@ if __name__ == '__main__':
             upperlimit = int(input("Enter the closing course number(Inclusive)\n"))
             if(lowerlimit < 0 or lowerlimit > len(all_courses) -1):
                 exit("Invalid lower limit..")
-            if(lowerlimit < 0 or upperlimit > len(all_courses) -1):
+            if(upperlimit < 0 or upperlimit > len(all_courses) -1):
                 exit("Invalid upper limit..")
             for course_select in range(lowerlimit,upperlimit + 1):
                 course = all_courses[course_select]
