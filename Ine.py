@@ -137,21 +137,17 @@ def course_preview_meta_getter(preview_id,quality):
     if os.name == 'nt':
         title = re.sub("[^0-9a-zA-Z.]+", "", title)
     out.append(title)
-    next_quality = quality - 360
     video_list = video["playlist"][0]["sources"]
-    video = 0
+    video,video_quality = 0,0
     for i in video_list:
         try:
-            if(i["height"] == quality):
+            if(i["height"] > video_quality):
+                next_quality_video = video
+                video_quality = i["height"]
                 video = i["file"]
-            elif(i["height"] == next_quality):
-                next_quality_video = i["file"]
         except:
             continue
-    if (video == 0):
-        out.append(next_quality_video)
-    else:
-        out.append(video)
+    out.append(video) if (quality == 1) else out.append(next_quality_video)
     return out
 
 
