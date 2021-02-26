@@ -1,10 +1,10 @@
 """
-Version: 1.3.6 Stable release
+Version: 1.3.7 Stable release
 Author: Jayapraveen AR
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 24/02/2021
+Date : 26/02/2021
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -13,7 +13,7 @@ To Do:
 Bug reporting: Please report them if any in issues tab
 """
 
-import requests,json,os,re,shutil,getpass,multiprocessing
+import requests,json,os,re,shutil,getpass,multiprocessing,sys
 from time import sleep
 from tqdm import tqdm
 #script location
@@ -44,8 +44,6 @@ passes_url = "https://subscriptions.ine.com/subscriptions/passes?embed=learning_
 refresh_token_url = "https://uaa.ine.com/uaa/auth/refresh-token"
 auth_check_url = "https://uaa.ine.com/uaa/auth/state/status"
 preview_url = "https://content.jwplatform.com/v2/media/"
-#Pass Index
-pass_index_value = 4
 #Retry times
 retry = 4
 
@@ -121,6 +119,13 @@ def access_token_refetch():
 def update_downloaded(course_index):
     with open(course_completed_path,'w') as cci:
         cci.write(course_index)
+
+def course_has_access(course):
+    for passes in range(len(course["access"]["related_passes"]) -1 ,0,-1):
+        boolean =  True if course["access"]["related_passes"][passes]["name"] in access_pass else False
+        if(boolean):
+            break
+    return boolean
 
 def course_preview_meta_getter(preview_id,quality):
     video_preview_url = preview_url + preview_id
@@ -376,6 +381,9 @@ def downloader(course):
 
 
 if __name__ == '__main__':
+    if not (sys.version_info.major == 3 and sys.version_info.minor >= 6):
+        print("This script requires Python 3.6 or higher!")
+        exit("You are using Python {}.{}".format(sys.version_info.major, sys.version_info.minor))
     os.system('cls') if os.name == 'nt' else os.system('clear')
     print("INE Courses Downloader\n")
     if(os.path.isfile(token_path)):
@@ -413,7 +421,7 @@ if __name__ == '__main__':
     quality = int(input("Choose Preferred Video Quality\n1.Highest Available Quality (1080p)\n2.Next To Highest Quality (720p)\n"))
     if(method == 1):
         cons = input("Warning! This is a high compute and throughput functionality and needs\nlots and lots of compute time and storage space \nEnter \"I agree\" to acknowledge and proceed!\n")
-        if(cons != "I agree"):
+        if(cons.lower() != "i agree"):
             print("User did not accept! Program exiting")
             exit()
         print("\nInitializing for Site dump\n")
@@ -433,7 +441,7 @@ if __name__ == '__main__':
             print("\nCourses to be downloaded this batch:",i," to ",this_session)
             pool = multiprocessing.Pool(multiprocessing.cpu_count())  # Num of CPUs
             with pool as p:
-                p.map(downloader,(all_courses[j] for j in range(i, this_session) if (False if (len(all_courses[j]["access"]["related_passes"]) == 0) else True if (all_courses[j]["access"]["related_passes"][pass_index_value]["name"] in access_pass) else False) and 1 or print("Course not in subscription access pack. Skipping ..")))
+                p.map(downloader,(all_courses[j] for j in range(i, this_session) if (False if (len(all_courses[j]["access"]["related_passes"]) == 0) else True if (course_has_access(all_courses[j])) else False) and 1 or print("Course not in subscription access pack. Skipping ..")))
                 p.close()
                 p.join()
             update_downloaded(str(i))
@@ -459,7 +467,7 @@ if __name__ == '__main__':
                 print('Course not found,Recheck url or Choose other method for selecting course\n')
                 exit()
             course = choice
-            if(course["access"]["related_passes"][pass_index_value]["name"] in access_pass):
+            if(course_has_access(course)):
                 downloader(course)
             else:
                  exit("You do not have the subscription pass access to this course")
@@ -467,7 +475,7 @@ if __name__ == '__main__':
         elif(choice == 2):
             choice = int(input("Please enter the number corresponding to the course you would like to download\n"))
             course = all_courses[choice]
-            if(course["access"]["related_passes"][pass_index_value]["name"] in access_pass):
+            if(course_has_access(course)):
                 downloader(course)
             else:
                 exit("You do not have the subscription/pass to access to this course")
@@ -486,7 +494,7 @@ if __name__ == '__main__':
                         continue
             for course_select in course_list:
                 course = all_courses[course_select]
-                if(course["access"]["related_passes"][pass_index_value]["name"] in access_pass):
+                if(course_has_access(course)):
                     downloader(course)
                 else:
                     print("You do not have the subscription/pass to access to this course")
@@ -500,7 +508,7 @@ if __name__ == '__main__':
                 exit("Invalid upper limit..")
             for course_select in range(lowerlimit,upperlimit + 1):
                 course = all_courses[course_select]
-                if(course["access"]["related_passes"][pass_index_value]["name"] in access_pass):
+                if(course_has_access(course)):
                     downloader(course)
                 else:
                     print("You do not have the subscription/pass to access to this course")

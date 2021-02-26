@@ -1,10 +1,11 @@
 # INE courses downloader
 
 ## How to use ?
-1. Clone the repository
-2. Install the requirements using "pip install -r requirements.txt" or changing the command according to your environment. 
-3. To specify the download location, open and change the "custom" Boolean to true and fill the save_path with your download location and save the script
-4. Run the script and choose options accordingly
+1. Check if you have Python 3.6 or newer installed
+2. Clone the repository
+3. Install the requirements using "pip install -r requirements.txt" or changing the command according to your environment. 
+4. To specify the download location, open and change the "custom" Boolean to true and fill the save_path with your download location and save the script
+5. Run the script and choose options accordingly
 
 ## What does this script download from the site?
 1. The Course Introduction(Preview)
