@@ -75,18 +75,29 @@ def login():
             exit()
 
 def auth_check():
+    global access_token
+    global refresh_token
     host = "uaa.ine.com"
     header = {"Host": host,"Origin": referer,"Referer": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Content-Type": content_type}
     auth_valid = requests.get(auth_check_url,headers = header)
-    user = json.loads(auth_valid.text)
     if(auth_valid.status_code == 200):
+        user = json.loads(auth_valid.text)
         if(user["data"]["email"]):
             email = user["data"]["email"]
             fname = user["data"]["profile"]["data"]["first_name"]
             lname = user["data"]["profile"]["data"]["last_name"]
             print("Logged in to INE as {} {} with {}\n".format(fname,lname,email))
+        # take new access token
+        if "meta" in user:
+            if "tokens" in user["meta"]:
+                access_token = user["meta"]["tokens"]["Bearer"]
+                with open(token_path,'w') as fp:
+                    print("access_token: " + access_token)
+                    print("refresh_token: " + refresh_token)
+                    tokens = {"access_token": access_token,"refresh_token": refresh_token}
+                    fp.write(json.dumps(tokens))
 
-    elif(auth_valid.status_code == 401):
+    else:
         print("Access token expired!\nTrying to refresh..")
         access_token_refetch()
         auth_check()
