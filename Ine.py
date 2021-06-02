@@ -1,10 +1,10 @@
 """
-Version: 1.3.7 Stable release
-Author: Jayapraveen AR
+Version: 1.3.8 Stable release
+Author: Jayapraveen AR, Pi
 Credits: @Dexter101010
 Program Aim: To download courses from INE website for personal and educational use
 Location : India
-Date : 26/02/2021
+Date : 02/06/2021
 To Do:
 3. Optimize for efficiency and memory footprint
 5. Compile the endpoints and data handling logic to prevent abuse and protect the authenticity of this script
@@ -21,6 +21,7 @@ script_path = os.getcwd()
 token_path = script_path + '/ine_tokens.txt'
 course_completed_path = script_path + '/ine_completed_course.txt'
 course_list_path = script_path + '/ine_courses.txt'
+course_list_index = script_path + '/ine_courses_index.txt'
 #Download location
 custom = False
 save_path = "download_location" if(custom) else os.getcwd()
@@ -44,8 +45,19 @@ passes_url = "https://subscriptions.ine.com/subscriptions/passes?embed=learning_
 refresh_token_url = "https://uaa.ine.com/uaa/auth/refresh-token"
 auth_check_url = "https://uaa.ine.com/uaa/auth/state/status"
 preview_url = "https://content.jwplatform.com/v2/media/"
+content_url = "https://content-api.ine.com/api/v1/iframes/{}/media"
+lab_url = "https://content-api.rmotr.com/api/v1/labs/{}"
+labimage_url = "https://assets.ine.com/cybersecurity-lab-images/{}/image{}.png"
+slide_url = "https://els-cdn.content-api.ine.com/{}/"
+file_url = "https://file.rmotr.com/api/v1/files/{}/download"
+slidejs_url = slide_url+"data/slide{}.js"
+slidecss_url = slide_url+"data/slide{}.css"
+slideimg_url = slide_url+"data/img{}.png"
+slidefnt_url = slide_url+"data/fnt{}.woff"
+
 #Retry times
-retry = 4
+retry = 10
+
 
 def login():
     global access_token
@@ -75,18 +87,29 @@ def login():
             exit()
 
 def auth_check():
+    global access_token
+    global refresh_token
     host = "uaa.ine.com"
     header = {"Host": host,"Origin": referer,"Referer": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Content-Type": content_type}
     auth_valid = requests.get(auth_check_url,headers = header)
-    user = json.loads(auth_valid.text)
     if(auth_valid.status_code == 200):
+        user = json.loads(auth_valid.text)
         if(user["data"]["email"]):
             email = user["data"]["email"]
             fname = user["data"]["profile"]["data"]["first_name"]
             lname = user["data"]["profile"]["data"]["last_name"]
             print("Logged in to INE as {} {} with {}\n".format(fname,lname,email))
+        # take new access token
+        if "meta" in user:
+            if "tokens" in user["meta"]:
+                access_token = user["meta"]["tokens"]["Bearer"]
+                with open(token_path,'w') as fp:
+                    print("access_token: " + access_token)
+                    print("refresh_token: " + refresh_token)
+                    tokens = {"access_token": access_token,"refresh_token": refresh_token}
+                    fp.write(json.dumps(tokens))
 
-    elif(auth_valid.status_code == 401):
+    else:
         print("Access token expired!\nTrying to refresh..")
         access_token_refetch()
         auth_check()
@@ -247,11 +270,182 @@ def total_courses():
         all_courses = json.loads(course_handler.read())
     length = len(all_courses)
     count = 0
+    open(course_list_index, 'w').close()
     for i in all_courses:
         print("{}. {}".format(count,i["name"]))
+        with open(course_list_index,'a', encoding ='utf8') as course_handler:
+            course_handler.write("{}. {}\n".format(count,i["name"]))
         count = count + 1
     print ("Total {} courses\n".format(length))
     return all_courses
+
+
+def download_lab(uuid, lab_index):
+
+    # content meta
+    host="content-api.rmotr.com"
+    header = {"Host": host,"Origin": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Referer": referer}
+    out = requests.get(lab_url.format(uuid),headers = header)
+    data = json.loads(out.text)
+
+    # prepare subfolders
+    subfolder_name = 'Lab'+str(lab_index)+'.'+data["name"]
+    if not os.path.exists(subfolder_name):
+        os.makedirs(subfolder_name)
+    if not os.path.exists(subfolder_name+"/data"):
+        os.makedirs(subfolder_name+"/data")
+
+    # save lab description as html
+    with open(subfolder_name+"/index.html",'w') as fp:
+        html_out = data["description_html"]
+        # replace external assets links
+        link="https://assets.ine.com/cybersecurity-lab-images/"+uuid
+        html_out=html_out.replace(link,"data")
+        fp.write(html_out)  
+
+    # imageX.png
+    host="assets.ine.com"
+    header = {"Host": host,"Origin": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Referer": referer}
+    slide_number = 1
+    status = True
+    while status:
+        out = requests.get(labimage_url.format(uuid,str(slide_number)), headers = header, stream=True)
+        if (out.status_code == 200):
+            with open(subfolder_name+"/data/image{}.png".format(str(slide_number)),'wb') as fp:
+                shutil.copyfileobj(out.raw, fp)
+            slide_number = slide_number + 1
+        else:
+            status = False
+
+
+def download_slides(uuid, slide_index):
+
+    # content meta
+    host="content-api.ine.com"
+    header = {"Host": host,"Origin": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Referer": referer}
+    out = requests.get(content_url.format(uuid),headers = header)
+    if (out.status_code == 200):
+        
+        cookies=out.cookies.get_dict()
+        data = json.loads(out.text)
+        
+        # prepare subfolders
+        subfolder_name = str(slide_index)+'.'+data["name"]+'/'
+        if not os.path.exists(subfolder_name):
+            os.makedirs(subfolder_name)
+        if not os.path.exists(subfolder_name+"/data"):
+            os.makedirs(subfolder_name+"/data")
+  
+        # files
+        host = "file.rmotr.com"
+        header = {"Host": host,"Origin": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Referer": referer}    
+        for f in data["files"]:
+            out = requests.get(file_url.format(f), headers=header)
+            if (out.status_code == 200):
+                file_data = json.loads(out.text)
+                dl_url = file_data["download_url"]
+                file_name = file_data["filename"]
+                out = requests.get(dl_url, stream=True)
+                if (out.status_code == 200):
+                    file_name=file_name.replace('/', '_')
+                    with open(subfolder_name+file_name, 'wb') as fp:
+                        shutil.copyfileobj(out.raw, fp)
+
+        # prepare header for slide content download
+        host = "els-cdn.content-api.ine.com"
+        header = {"Host": host,"Origin": referer,"Authorization": access_token,"User-Agent": user_agent,"Accept": accept,"X-Requested-With": x_requested_with,"Accept-Encoding": accept_encodings,"sec-fetch-mode": sec_fetch_mode,"sec-fetch-dest": sec_fetch_dest,"Referer": referer}    
+
+        # index.html
+        if not os.path.exists(subfolder_name+"index.html"):
+            out = requests.get(data["url"], headers=header, cookies=cookies)
+            if (out.status_code == 200):
+                with open(subfolder_name+"index.html",'w') as fp:
+                    #remove ending after ".js"
+                    html_out=out.text
+                    pre = "\<script\ src\=\""
+                    suf = "\"\>\<\/script\>"
+                    js_files = re.findall(pre+".*"+suf, html_out)
+                    for js in js_files:
+                        js_path = re.findall('"([^"]*)"',js)[0]
+                        html_out=html_out.replace(js_path,js_path[:js_path.rfind('?')])
+                    fp.write(html_out)
+        
+                # browsersupport.js and player.js
+                pre = "\<script\ src\=\""
+                suf = "\"\>\<\/script\>"
+                js_files = re.findall(pre+".*"+suf, out.text)
+                for js in js_files:
+                    js_path = re.findall('"([^"]*)"',js)[0]
+                    out = requests.get(slide_url.format(uuid)+js_path, headers=header, cookies=cookies)
+                    if (out.status_code == 200):    
+                        with open(subfolder_name+js_path[:js_path.rfind('?')],'w') as fp:
+                            fp.write(out.text)
+
+        # slideX.js
+        num = 1
+        http = True
+        while http:
+            target=subfolder_name+"data/slide{}.js".format(str(num))
+            if os.path.exists(target):
+                num = num + 1
+            else:
+                out = requests.get(slidejs_url.format(uuid,str(num)), headers=header, cookies=cookies)
+                if (out.status_code == 200):
+                    with open(target,'w') as fp:
+                        fp.write(out.text)
+                    num = num + 1
+                else:
+                    http = False            
+
+        # slideX.css
+        num = 1
+        http = True
+        while http:
+            target=subfolder_name+"data/slide{}.css".format(str(num))
+            if os.path.exists(target):
+                num = num + 1
+            else:
+                out = requests.get(slidecss_url.format(uuid,str(num)), headers=header, cookies=cookies)
+                if (out.status_code == 200):
+                    with open(target,'w') as fp:
+                        fp.write(out.text)
+                    num = num + 1
+                else:
+                    http = False
+        
+        # imgX.png
+        num = 0
+        http = True
+        while http:
+            target=subfolder_name+"data/img{}.png".format(str(num))
+            if os.path.exists(target):
+                num = num + 1
+            else:
+                out = requests.get(slideimg_url.format(uuid,str(num)), headers=header, cookies=cookies, stream=True)
+                if (out.status_code == 200):
+                    with open(target, 'wb') as fp:
+                        shutil.copyfileobj(out.raw, fp)
+                    num = num + 1
+                else:
+                    http = False
+
+        # fntX.woff
+        num = 0
+        http = True
+        while http:
+            target=subfolder_name+"data/fnt{}.woff".format(str(num))
+            if os.path.exists(target):
+                num = num + 1
+            else:
+                out = requests.get(slidefnt_url.format(uuid,str(num)), headers=header, cookies=cookies, stream=True)
+                if (out.status_code == 200):
+                    with open(target, 'wb') as fp:
+                        shutil.copyfileobj(out.raw, fp)
+                    num = num + 1
+                else:
+                    http = False
+
+
 
 def download_video(url,filename,epoch = 0):
     if(os.path.isfile(filename)):
@@ -268,6 +462,7 @@ def download_video(url,filename,epoch = 0):
         else:
             if (epoch > retry):
                 exit("Server doesn't support HEAD.")
+            sleep(7)
             download_video(url,filename,epoch + 1)
     else:
         video = requests.get(url, stream=True)
@@ -353,9 +548,17 @@ def downloader(course):
                         os.chdir(subfolder_name)
                         subfolder_index = subfolder_index + 1
                         video_index = 1
+                        slide_index = 1
+                        lab_index = 1
                         with tqdm(j["content"], unit='videofile', unit_scale=True) as pbar:
                             for k in pbar:
                                 #print(k)
+                                if(k["content_type"] == "iframe"):
+                                    download_slides(k["uuid"], slide_index)
+                                    slide_index = slide_index + 1
+                                if(k["content_type"] == "lab"):
+                                    download_lab(k["uuid"], lab_index)
+                                    lab_index = lab_index + 1
                                 if(k["content_type"] == "video"):
                                     out = get_meta(k["uuid"])
                                     out[0] = str(video_index) + '.' + out[0]

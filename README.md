@@ -22,6 +22,9 @@
 3. I have a course in the site that is not showing in the script to download?   
 -- Is the Course featured on the site or was the course added to the site after you ran the script for the first time then delete the "ine_courses.txt" file from the directory where the script is located and rerun the script.
 
+## Co-Authors
+The Slides Downloader feature was Authored by Pi
+
 ## Credits
 Made possible by @dexter101010 and his yummy cookies.
 
