@@ -326,7 +326,7 @@ def download_lab(uuid, lab_index):
     data = json.loads(out.text)
 
     # prepare subfolders
-    subfolder_name = ('Lab' + str(lab_index) + '.' + data["name"]).replace(':', ';').replace('/', '')
+    subfolder_name = ('Lab' + str(lab_index) + '.' + data["name"]).replace(':', ';').replace('/', '').strip()
     if not os.path.exists(subfolder_name):
         os.makedirs(subfolder_name)
     if not os.path.exists(subfolder_name + "/data"):
@@ -597,7 +597,7 @@ def downloader(course):
     course_name = course["name"]
     course_id = course['id']
     if os.name == 'nt':
-        course_name = course_name.replace(':', ';').replace('/', '')
+        course_name = course_name.replace(':', ';').replace('/', '').strip()
     course_files = course["files"]
     preview_id = course["trailer_jwplayer_id"]
     publish_state = course["status"]
@@ -631,7 +631,7 @@ def downloader(course):
                 for j in i["content"]:
                     print("\n-- Downloading section: %s" % j['name'])
                     if (j["content_type"] == "topic"):
-                        subfolder_name = (str(subfolder_index) + '.' + j["name"]).replace(':', ';').replace('/', '')
+                        subfolder_name = (str(subfolder_index) + '.' + j["name"]).replace(':', ';').replace('/', '').strip()
                         if not os.path.exists(subfolder_name):
                             os.makedirs(subfolder_name)
                         os.chdir(subfolder_name)
