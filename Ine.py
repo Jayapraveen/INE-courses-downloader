@@ -333,7 +333,7 @@ def download_lab(uuid, lab_index):
         os.makedirs(subfolder_name + "/data")
 
     # save lab description as html
-    with open(subfolder_name + "/index.html", 'w') as fp:
+    with open(subfolder_name + "/index.html", 'w', encoding='utf8') as fp:
         html_out = data["description_html"]
         # replace external assets links
         link = "https://assets.ine.com/cybersecurity-lab-images/" + uuid
@@ -473,7 +473,7 @@ def download_slides(uuid, slide_index):
                 if (out.status_code == 200):
                     if num == 1:
                         print('Downloading slideX.js...')
-                    with open(target, 'w', encoding="utf-8") as fp:
+                    with open(target, 'w', encoding="utf8") as fp:
                         fp.write(out.text)
                     num = num + 1
                 else:
@@ -807,7 +807,7 @@ if __name__ == '__main__':
                 print("You do not have the subscription/pass to access to this course")
                 continue
     elif (choice == 5):
-        learning_path = str(input("\nEnter the learning path title you want to download\n"))
+        learning_path = str(input("\nEnter the learning path title you want to download\n(See https://my.ine.com/learning-paths for paths)\n"))
         path_courses = {}
         with open('ine_courses_index.txt', 'r') as f_raw:
             f_index = f_raw.readlines()
@@ -824,7 +824,7 @@ if __name__ == '__main__':
                 print(f"No courses could be found for {learning_path}, please verify your input!")
                 exit()
             else:
-                print(f"\n>> {len(path_courses)+1} courses will be downloaded for the {learning_path} learning path. <<\n")
+                print(f"\n>> {len(path_courses)+1} courses will be downloaded for the '{learning_path}' learning path. <<\n")
         for course_select in path_courses.values():
             course = all_courses[course_select]
             course_nbr = list(path_courses.values()).index(course_select)
