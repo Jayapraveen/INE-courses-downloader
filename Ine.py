@@ -284,7 +284,7 @@ def get_meta(uuid,course_id):
         print("No access to video metadata;\nToken expired. Please login again ..")
         login()
         print("Resuming operations..")
-        return get_meta(uuid)
+        return get_meta(uuid, course_id)
 
 
 def coursemeta_fetcher():
