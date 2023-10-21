@@ -834,6 +834,6 @@ if __name__ == '__main__':
             else:
                 print("You do not have the subscription/pass to access to this course")
                 continue
-        print(f"All {len(path_courses+1)} courses for the learning path {learning_path} have been downloaded!")
+        print(f"All {len(path_courses)+1} courses for the learning path {learning_path} have been downloaded!")
     else:
         exit("Invalid choice!\n")
