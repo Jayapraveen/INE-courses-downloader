@@ -26,7 +26,6 @@ course_list_path = script_path + '/ine_courses.txt'
 course_list_index = script_path + '/ine_courses_index.txt'
 # Download location
 custom = False
-save_path = "YOUR_LOCAL_PATH" if (custom) else os.getcwd()
 # headers
 referer = "http://localhost"
 host = 'uaa.ine.com'
@@ -238,7 +237,7 @@ def sanitize(course_name):
 
 
 # Video metadata getter
-def get_meta(uuid,course_id):
+def get_meta(uuid, course_id):
     host = "video.rmotr.com"
     header = {
         'Host': host,
@@ -327,7 +326,7 @@ def download_lab(uuid, lab_index):
     data = json.loads(out.text)
 
     # prepare subfolders
-    subfolder_name = ('Lab' + str(lab_index) + '.' + data["name"]).replace(':',';').replace('/','')
+    subfolder_name = ('Lab' + str(lab_index) + '.' + data["name"]).replace(':', ';').replace('/', '')
     if not os.path.exists(subfolder_name):
         os.makedirs(subfolder_name)
     if not os.path.exists(subfolder_name + "/data"):
@@ -542,7 +541,7 @@ def download_video(url, filename, epoch=0):
         if video_head.status_code == 200:
             video_length = int(video_head.headers.get("content-length"))
             if (os.path.getsize(filename) >= video_length):
-                print(f"{filename} already downloaded.. skipping Downloading..")
+                print(f"---- {filename} already downloaded.. skipping Downloading..")
             else:
                 print("Redownloading faulty download..")
                 os.remove(filename)  # Improve removing logic
@@ -560,8 +559,8 @@ def download_video(url, filename, epoch=0):
                 print(f"{filename} already downloaded.. skipping write to disk..")
             else:
                 try:
-                    print(f'\nDownloading video: {filename}')
-                    with tqdm.wrapattr(video.raw, "read", total=video_length, desc="") as raw:
+                    # print(f'Downloading video: {filename}')
+                    with tqdm.wrapattr(video.raw, "read", total=video_length, desc=f'Downloading video: {filename}') as raw:
                         with open(filename, 'wb') as video_file:
                             shutil.copyfileobj(raw, video_file)
                 except:
@@ -598,11 +597,12 @@ def downloader(course):
     course_name = course["name"]
     course_id = course['id']
     if os.name == 'nt':
-        course_name = course_name.replace(':',';').replace('/','')
+        course_name = course_name.replace(':', ';').replace('/', '')
     course_files = course["files"]
     preview_id = course["trailer_jwplayer_id"]
     publish_state = course["status"]
     if (publish_state == "published"):
+        print("\n>>>> Downloading course: %s <<<<" % course_name)
         os.chdir(save_path)
         if not os.path.exists(course_name):
             os.makedirs(course_name)
@@ -620,7 +620,6 @@ def downloader(course):
         folder_index = 1
         content_count = 0
         for i in course['content']:
-            print("Downloading course: %s" % course_name)
             content_count += 1
             if i["content_type"] == "group":
                 folder_name = str(folder_index) + '.' + i["name"]
@@ -630,9 +629,9 @@ def downloader(course):
                 folder_index = folder_index + 1
                 subfolder_index = 1
                 for j in i["content"]:
-                    print("Downloading section: %s" % j['name'])
+                    print("\n-- Downloading section: %s" % j['name'])
                     if (j["content_type"] == "topic"):
-                        subfolder_name = (str(subfolder_index) + '.' + j["name"]).replace(':',';').replace('/','')
+                        subfolder_name = (str(subfolder_index) + '.' + j["name"]).replace(':', ';').replace('/', '')
                         if not os.path.exists(subfolder_name):
                             os.makedirs(subfolder_name)
                         os.chdir(subfolder_name)
@@ -662,7 +661,7 @@ def downloader(course):
             else:
                 print("The content type is not a group")
         os.chdir('../')
-        print("Course downloaded successfully\n")
+        print(f"\n >>>> {course_name} downloaded successfully <<<<\n")
     else:
         print("This course is marked as {}. Visit later when available on website to download ".format(publish_state))
 
@@ -738,8 +737,14 @@ if __name__ == '__main__':
     # else:
     print(
         "Free Subscription Detected! Do not enter courses not accessible with your account...\n") if siterip == 0 else 0
+    custom_path = int(input("\nChoose download location\n1.Current location\n2.Custom location\n"))
+    if custom_path == 2:
+        save_path = input("Where would you like to download your courses? Please put the full path here\n")
+        custom = True
+    elif custom_path != 1:
+        print("Please select download location option 1 or 2!")
     choice = int(input(
-        "Choose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n3.Download a select number of courses from the above list\n4.Download a bunch of courses from the above list using a range\n"))
+        "\nChoose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n3.Download a select number of courses from the above list\n4.Download a bunch of courses from the above list using a range\n5.Download courses of specified learning path\n"))
     if (choice == 1):
         url = input("Paste the url\n")
         flag = 1
@@ -800,5 +805,31 @@ if __name__ == '__main__':
             else:
                 print("You do not have the subscription/pass to access to this course")
                 continue
+    elif (choice == 5):
+        learning_path = str(input("\nEnter the learning path title you want to download\n"))
+        path_courses = {}
+        with open('ine_courses_index.txt', 'r') as f_raw:
+            f_index = f_raw.readlines()
+            for course in all_courses:
+                try:
+                    if course['learning_paths'][0]['name'].lower() == learning_path.lower():
+                        for line in f_index:
+                            if course['name'] in line:
+                                path_courses[line.partition('.')[2][1:].replace('\n','')] = int(line.partition('.')[0])
+                                break
+                except:
+                    pass
+            if len(path_courses) == 0:
+                print(f"No courses could be found for {learning_path}, please verify your input!")
+            else:
+                print(f"\n>> {len(path_courses)} courses will be downloaded for the {learning_path} learning path. <<\n")
+        for course_select in path_courses.values():
+            course = all_courses[course_select]
+            if (course_has_access(course)):
+                downloader(course)
+            else:
+                print("You do not have the subscription/pass to access to this course")
+                continue
+        print(f"All {len(path_courses)} courses for the learning path {learning_path} have been downloaded!")
     else:
         exit("Invalid choice!\n")
