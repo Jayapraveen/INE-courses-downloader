@@ -816,7 +816,7 @@ if __name__ == '__main__':
                     for path in course['learning_paths']:
                         if path['name'].lower() == learning_path.lower():
                             for line in f_index:
-                                if course['name'] in line:
+                                if course['name'] in line and (course['name'] + ' ') not in line:
                                     path_courses[line.partition('.')[2][1:].replace('\n','')] = int(line.partition('.')[0])
                                     break
                 except:
