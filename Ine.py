@@ -665,6 +665,26 @@ def downloader(course):
     else:
         print("This course is marked as {}. Visit later when available on website to download ".format(publish_state))
 
+def download_learning_path(path_courses,learning_path,all_courses):
+    if len(path_courses) == 0:
+        print(f"No courses could be found for {learning_path}, please verify your input!")
+        exit()
+    else:
+        print(
+            f"\n>> {len(path_courses) + 1} courses will be downloaded for the '{learning_path}' learning path. <<\n")
+
+
+    for course_select in path_courses.values():
+        course = all_courses[course_select]
+        course_nbr = list(path_courses.values()).index(course_select)
+        print(f'Downloading course {int(course_nbr) + 1} of {len(path_courses)}!')
+        if course_has_access(course):
+            downloader(course)
+        else:
+            print("You do not have the subscription/pass to access to this course")
+            continue
+    print(f"All {len(path_courses)} courses for the learning path {learning_path} have been downloaded!")
+
 
 if __name__ == '__main__':
     if not (sys.version_info.major == 3 and sys.version_info.minor >= 6):
@@ -737,15 +757,17 @@ if __name__ == '__main__':
     # else:
     print(
         "Free Subscription Detected! Do not enter courses not accessible with your account...\n") if siterip == 0 else 0
-    custom_path = int(input("\nChoose download location\n1.Current location\n2.Custom location\n"))
-    if custom_path == 2:
+    custom_path = int(input("\nChoose download location\n1.Current location\n2.Custom location\n3.NA (for multiple learning path download option)\n"))
+    if custom_path == 3:
+        custom = True
+    elif custom_path == 2:
         save_path = input("\nWhere would you like to download your courses? Please put the full path here\n")
         custom = True
     elif custom_path != 1:
         print("Please select download location option 1 or 2!")
         exit()
     choice = int(input(
-        "\nChoose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n3.Download a select number of courses from the above list\n4.Download a bunch of courses from the above list using a range\n5.Download courses of specified learning path\n"))
+        "\nChoose Method Of Selecting Course\n1.Enter url\n2.Choose from the above listed course\n3.Download a select number of courses from the above list\n4.Download a bunch of courses from the above list using a range\n5.Download courses of specified learning path\n6.Download multiple learning paths\n"))
     if (choice == 1):
         url = input("Paste the url\n")
         flag = 1
@@ -826,15 +848,36 @@ if __name__ == '__main__':
                 exit()
             else:
                 print(f"\n>> {len(path_courses)+1} courses will be downloaded for the '{learning_path}' learning path. <<\n")
-        for course_select in path_courses.values():
-            course = all_courses[course_select]
-            course_nbr = list(path_courses.values()).index(course_select)
-            print(f'Downloading course {int(course_nbr)+1} of {len(path_courses)}!')
-            if (course_has_access(course)):
-                downloader(course)
+        download_learning_path(path_courses, learning_path, all_courses)
+    elif (choice == 6):
+        print(
+            "\nEnter the learning path title and storage location divided by a '|'\nExample: Course123 | C:/somewhere/course123\nType 'done' to finish entering paths.\n(See https://my.ine.com/learning-paths for paths)\n")
+        path_list = {}
+        while (True):
+            path_choice = str(input())
+            if (path_choice.lower() == "done"):
+                break
             else:
-                print("You do not have the subscription/pass to access to this course")
-                continue
-        print(f"All {len(path_courses)} courses for the learning path {learning_path} have been downloaded!")
+                choices = path_choice.split('|')
+                path_list[choices[0].strip()] = choices[1].strip()
+        path_courses = {}
+        for learning_path in path_list:
+            path_nbr = list(path_list.keys()).index(learning_path)
+            print(f'>>>>>>>>>>>>>>>>>>>>>>>>>>> Downloading learning path {int(path_nbr) + 1} of {len(path_list)}! <<<<<<<<<<<<<<<<<<<<<<<<<<<')
+            save_path = path_list[learning_path]
+            with open('ine_courses_index.txt', 'r') as f_raw:
+                f_index = f_raw.readlines()
+                for course in all_courses:
+                    try:
+                        for path in course['learning_paths']:
+                            if path['name'].lower() == learning_path.lower():
+                                for line in f_index:
+                                    if course['name'] in line and (course['name'] + ' ') not in line:
+                                        path_courses[line.partition('.')[2][1:].replace('\n', '')] = int(
+                                            line.partition('.')[0])
+                                        break
+                    except:
+                        pass
+            download_learning_path(path_courses, learning_path, all_courses)
     else:
         exit("Invalid choice!\n")
