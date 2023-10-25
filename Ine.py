@@ -813,11 +813,12 @@ if __name__ == '__main__':
             f_index = f_raw.readlines()
             for course in all_courses:
                 try:
-                    if course['learning_paths'][0]['name'].lower() == learning_path.lower():
-                        for line in f_index:
-                            if course['name'] in line:
-                                path_courses[line.partition('.')[2][1:].replace('\n','')] = int(line.partition('.')[0])
-                                break
+                    for path in course['learning_paths']:
+                        if path['name'].lower() == learning_path.lower():
+                            for line in f_index:
+                                if course['name'] in line:
+                                    path_courses[line.partition('.')[2][1:].replace('\n','')] = int(line.partition('.')[0])
+                                    break
                 except:
                     pass
             if len(path_courses) == 0:
@@ -828,12 +829,12 @@ if __name__ == '__main__':
         for course_select in path_courses.values():
             course = all_courses[course_select]
             course_nbr = list(path_courses.values()).index(course_select)
-            print(f'Downloading course {int(course_nbr)+1} of {len(path_courses)+1}!')
+            print(f'Downloading course {int(course_nbr)+1} of {len(path_courses)}!')
             if (course_has_access(course)):
                 downloader(course)
             else:
                 print("You do not have the subscription/pass to access to this course")
                 continue
-        print(f"All {len(path_courses)+1} courses for the learning path {learning_path} have been downloaded!")
+        print(f"All {len(path_courses)} courses for the learning path {learning_path} have been downloaded!")
     else:
         exit("Invalid choice!\n")
