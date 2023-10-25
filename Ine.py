@@ -671,7 +671,7 @@ def download_learning_path(path_courses,learning_path,all_courses):
         exit()
     else:
         print(
-            f"\n>> {len(path_courses) + 1} courses will be downloaded for the '{learning_path}' learning path. <<\n")
+            f"\n>> {len(path_courses)} courses will be downloaded for the '{learning_path}' learning path. <<\n")
 
 
     for course_select in path_courses.values():
@@ -831,7 +831,7 @@ if __name__ == '__main__':
     elif (choice == 5):
         learning_path = str(input("\nEnter the learning path title you want to download\n(See https://my.ine.com/learning-paths for paths)\n"))
         path_courses = {}
-        with open('ine_courses_index.txt', 'r') as f_raw:
+        with open(course_list_index, 'r') as f_raw:
             f_index = f_raw.readlines()
             for course in all_courses:
                 try:
@@ -860,12 +860,12 @@ if __name__ == '__main__':
             else:
                 choices = path_choice.split('|')
                 path_list[choices[0].strip()] = choices[1].strip()
-        path_courses = {}
         for learning_path in path_list:
+            path_courses = {}
             path_nbr = list(path_list.keys()).index(learning_path)
             print(f'>>>>>>>>>>>>>>>>>>>>>>>>>>> Downloading learning path {int(path_nbr) + 1} of {len(path_list)}! <<<<<<<<<<<<<<<<<<<<<<<<<<<')
             save_path = path_list[learning_path]
-            with open('ine_courses_index.txt', 'r') as f_raw:
+            with open(course_list_index, 'r') as f_raw:
                 f_index = f_raw.readlines()
                 for course in all_courses:
                     try:
