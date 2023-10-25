@@ -388,7 +388,7 @@ def download_slides(uuid, slide_index):
         data = json.loads(out.text)
 
         # prepare subfolders
-        subfolder_name = str(slide_index) + '.' + data["name"] + '/'
+        subfolder_name = (str(slide_index) + '.' + data["name"] + '/').replace(':', ';').strip()
         if not os.path.exists(subfolder_name):
             os.makedirs(subfolder_name)
         if not os.path.exists(subfolder_name + "/data"):
@@ -683,7 +683,7 @@ def download_learning_path(path_courses,learning_path,all_courses):
         else:
             print("You do not have the subscription/pass to access to this course")
             continue
-    print(f"All {len(path_courses)} courses for the learning path {learning_path} have been downloaded!")
+    print(f"All {len(path_courses)} courses for the learning path {learning_path} have been downloaded!\n")
 
 
 if __name__ == '__main__':
@@ -863,7 +863,7 @@ if __name__ == '__main__':
         for learning_path in path_list:
             path_courses = {}
             path_nbr = list(path_list.keys()).index(learning_path)
-            print(f'>>>>>>>>>>>>>>>>>>>>>>>>>>> Downloading learning path {int(path_nbr) + 1} of {len(path_list)}! <<<<<<<<<<<<<<<<<<<<<<<<<<<')
+            print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Downloading learning path {int(path_nbr) + 1} of {len(path_list)}! <<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
             save_path = path_list[learning_path]
             with open(course_list_index, 'r') as f_raw:
                 f_index = f_raw.readlines()
